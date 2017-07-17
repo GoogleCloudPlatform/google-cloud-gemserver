@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require "google/cloud/gemserver"
+
+require "irb"
+IRB.start(__FILE__)

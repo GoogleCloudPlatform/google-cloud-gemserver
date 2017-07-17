@@ -1,0 +1,39 @@
+---
+runtime: ruby
+env: flex
+entrypoint: "./bin/google-cloud-gemserver start"
+beta_settings:
+# this is set automatically during a deploy
+  cloud_sql_instances: ""
+health_check:
+  enable_health_check: false # can be changed
+automatic_scaling:
+  min_num_instances: 1 # can be changed
+# this can be set to 1 to disable auto scaling
+  max_num_instances: 5 # can be changed
+env_variables:
+  GEMSERVER_ON_APPENGINE: true
+  production_db_database: mygems # can be changed
+  production_db_username: test # can be changed
+  production_db_password: test # can be changed
+  production_db_host: localhost # can be changed
+# this is set automatically during a deploy
+  production_db_socket: "" # can be changed
+  production_db_adapter: cloud_sql
+  dev_db_database: mygems # can be changed
+  dev_db_username: test # can be changed
+  dev_db_password: test # can be changed
+  dev_db_host: localhost # can be changed
+# this must be set manually if using cloud_sql, requires APP_ENV=dev
+  dev_db_socket: "# this must be set manually" # can be changed
+  dev_db_adapter: cloud_sql # can be changed
+  test_db_database: mygems # can be changed
+  test_db_username: test # can be changed
+  test_db_password: test # can be changed
+  test_db_host: localhost # can be changed
+  test_db_adapter: sqlite3 # can be changed
+# general gemserver settings
+  gen_cache_type: memory
+  gen_protected_fetch: true
+  gen_bind: tcp://0.0.0.0:8080
+  gen_log_file: :stdout

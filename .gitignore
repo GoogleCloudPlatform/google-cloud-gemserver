@@ -1,0 +1,11 @@
+/.bundle/
+/.yardoc
+/Gemfile.lock
+/integration/gem_install/**/*
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+mygems
