@@ -76,13 +76,23 @@ module Google
         # public repository's master branch.
         def self.install_gemstash
           puts "Installing core missing dependency (gemstash)..."
-          clone_repo
+          begin
+            clone_repo
+            build_and_install_gem
+          ensure
+            cleanup
+          end
+        end
+
+        ##
+        # @private Builds gemstash from the latest revision on the master
+        # branch of its public repository then installs from the gemspec.
+        def self.build_and_install_gem
           Dir.chdir GEM_NAME do
             spec = Gem::Specification.load "#{GEM_NAME}.gemspec"
             gem = Gem::Package.build spec
             Gem::DependencyInstaller.new.install gem
           end
-          cleanup
         end
 
         ##
@@ -104,7 +114,7 @@ module Google
         ##
         # @private Clones the public gemstash repository.
         def self.clone_repo
-          system "git clone #{GEM_URL}"
+          system "git clone #{GEM_URL} > /dev/null 2>&1"
         end
 
         ##
