@@ -1,6 +1,6 @@
 # Google::Cloud::Gemserver
 
-[![Build Status](https://travis-ci.org/GoogleCloudPlatform/google-cloud-gemserver.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/google-cloud-ruby)
+[![Build Status](https://travis-ci.org/GoogleCloudPlatform/google-cloud-gemserver.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/google-cloud-gemserver)
 
 This gem is a tool that lets you manage, interact with, and deploy a [private gem
 server](https://github.com/bundler/gemstash) to a Google Cloud Platform project.

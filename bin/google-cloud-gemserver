@@ -1,5 +1,9 @@
 #!/usr/bin/env ruby
 require "bundler/setup"
+require "google/cloud/gemserver/gemstash_installer"
+
+Google::Cloud::Gemserver::GemstashInstaller.check_and_install_gemstash
+
 require "google/cloud/gemserver/cli"
 
 Google::Cloud::Gemserver::CLI.start ARGV
