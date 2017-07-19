@@ -74,11 +74,11 @@ module Google
         ##
         # @private Installs the newest version of gemstash by cloning the
         # public repository's master branch.
-        def self.install_gemstash
+        def self.install_gemstash should_upgrade = false
           puts "Installing core missing dependency (gemstash)..."
           begin
             clone_repo
-            build_and_install_gem
+            build_and_install_gem should_upgrade
           ensure
             cleanup
           end
@@ -87,9 +87,10 @@ module Google
         ##
         # @private Builds gemstash from the latest revision on the master
         # branch of its public repository then installs from the gemspec.
-        def self.build_and_install_gem
+        def self.build_and_install_gem should_upgrade = false
           Dir.chdir GEM_NAME do
             spec = Gem::Specification.load "#{GEM_NAME}.gemspec"
+            uninstall_gemstash(spec.version.version) if should_upgrade
             gem = Gem::Package.build spec
             Gem::DependencyInstaller.new.install gem
           end
@@ -97,9 +98,9 @@ module Google
 
         ##
         # @private Uninstalls the current version of gemstash.
-        def self.uninstall_gemstash
-          puts "Uninstalling gemstash..."
-          system "gem uninstall -x gemstash"
+        def self.uninstall_gemstash version
+          puts "Uninstalling gemstash v#{version}..."
+          system "gem uninstall -x gemstash -v #{version}"
         end
 
         ##
@@ -107,8 +108,7 @@ module Google
         # latest version on the public repository.
         def self.upgrade_gemstash
           puts "Upgrading gemstash by reinstalling it..."
-          uninstall_gemstash
-          install_gemstash
+          install_gemstash should_upgrade: true
         end
 
         ##
