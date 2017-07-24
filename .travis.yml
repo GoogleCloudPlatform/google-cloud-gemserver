@@ -52,7 +52,9 @@ script:
   - bundle exec rake test
 
   - echo "Run acceptance tests"
+  - gcloud config set project $PROJECT_NAME
   - host=$GEMSERVER_PRIVATE_URL key=$GEMSERVER_KEY_NAME bundle exec rake acceptance
 
   - echo "Run integration tests"
+  - gcloud config set project $PROJECT_NAME
   - host=$GEMSERVER_PRIVATE_URL key=$GEMSERVER_KEY_NAME bundle exec rake integration

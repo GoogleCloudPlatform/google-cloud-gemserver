@@ -17,9 +17,10 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/GoogleCloudPlatform/google-cloud-gemserver"
   spec.license       = "Apache-2.0"
 
-  spec.files         = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{^(test|spec|features)/})
-  end
+  spec.files         = Dir.glob("#{__dir__}/**/*").reject do |f|
+    f.include?("coverage") || f.include?(".git/") || f.include?("doc/")
+  end.map { |f| f[__dir__.size + 1..f.size] }
+
   spec.executables   = "google-cloud-gemserver"
   spec.require_paths = ["lib"]
 

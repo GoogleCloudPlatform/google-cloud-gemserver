@@ -14,9 +14,7 @@
 
 require "google/cloud/gemserver"
 require "fileutils"
-require "gemstash"
 require "yaml"
-require "patched/web"
 
 module Google
   module Cloud
@@ -58,7 +56,7 @@ module Google
               "--config-file=#{path}"
             ].freeze
             Google::Cloud::Gemserver::StorageSync.download_service
-            Gemstash::CLI.start args
+            Google::Cloud::Gemserver::Backend::GemstashServer.start args
           end
 
           ##
@@ -74,7 +72,7 @@ module Google
               @config.save_to_cloud
               setup_default_keys
             ensure
-              #cleanup
+              cleanup
             end
           end
 
@@ -170,6 +168,29 @@ module Google
           end
 
           ##
+          # @private Creates a Gemfile and Gemfile.lock for the gemserver that
+          # runs on Google App Engine such that gemstash is not required
+          # client side for the CLI.
+          def gemfile
+            source = %{
+source "https://rubygems.org"
+
+gem "concurrent-ruby", require: "concurrent"
+gem "gemstash", git: "https://github.com/bundler/gemstash.git"
+gemspec
+            }
+            File.open("#{Configuration::SERVER_PATH}/Gemfile", "w") do |f|
+              f.write source
+            end
+
+            run_cmd "rm #{Configuration::SERVER_PATH}/Gemfile.lock"
+
+            Bundler.with_clean_env do
+              run_cmd "cd #{Configuration::SERVER_PATH} && bundle lock"
+            end
+          end
+
+          ##
           # @private Creates a temporary directory with the necessary files to
           # deploy the gemserver.
           def prepare_dir
@@ -179,6 +200,7 @@ module Google
             FileUtils.cp_r "#{dir}/.", Configuration::SERVER_PATH
             FileUtils.cp @config.config_path, Configuration::SERVER_PATH
             FileUtils.cp @config.app_path, Configuration::SERVER_PATH
+            gemfile
           end
 
           ##

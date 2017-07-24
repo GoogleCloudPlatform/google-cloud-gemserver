@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
 gem "concurrent-ruby", require: "concurrent"
-gem "gemstash", git: "https://github.com/bundler/gemstash.git"
+# uncomment and run `bundle install` before running tests
+# gem "gemstash", git: "https://github.com/bundler/gemstash.git"
 gemspec

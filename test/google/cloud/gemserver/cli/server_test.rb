@@ -13,6 +13,7 @@
 # limitations under the License.
 
 require "helper"
+require "gemstash"
 
 describe Google::Cloud::Gemserver::CLI::Server do
   describe "Server.new" do

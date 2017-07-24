@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "gemstash"
 require "fileutils"
 require "yaml"
 require "active_support/core_ext/hash/deep_merge"
