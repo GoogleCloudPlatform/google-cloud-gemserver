@@ -40,3 +40,10 @@ tests.
     Ensure cloud_sql_proxy is running and connected to the CloudSQL instance of
     your testing gemserver (dev prefix) in app.yaml.
     `bundle exec rake integration host=test-gemserver-url.com key=my-test-key`
+
+### Travis PR Builds
+
+By default, unit tests will always run for every update to a PR. Acceptance and
+integration tests will run after a PR is merged. If tests break, please submit a
+separate PR to fix the issues.
+
