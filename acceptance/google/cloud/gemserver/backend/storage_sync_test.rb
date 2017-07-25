@@ -15,9 +15,9 @@
 require "helper"
 require "google/cloud/storage"
 
-SS        = GCG::StorageSync
+SS        = GCG::Backend::StorageSync
 
-describe Google::Cloud::Gemserver::StorageSync do
+describe Google::Cloud::Gemserver::Backend::StorageSync do
   describe ".run" do
     it "calls upload_service" do
       SS.stub :try_upload, nil do

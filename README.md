@@ -36,7 +36,7 @@ Or install it yourself as:
   5) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
 
 ### Typical Workflow
-  1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`
+  1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the CLoud SQL SLA coverage.
   2) Generate a key (referred to as my-key) by running `google-cloud-gemserver create_key` for your gemserver. By default, this generates a key with both read and write permissions. For more information about keys, read [this](docs/key.md).
   3) Add this key to your bundle config by running `bundle config http://gemserver-url.com/private/ my-key` where gemserver-url is the same as your project's url, e.g. http://my-project.appspot.com/private/. This is necessary to download gems.
   4) Add this key to your gem credentials as my-key (in ~/.gem/credentials): `:my-key: [KEY]` This is necessary to push gems (if the key has write permission).

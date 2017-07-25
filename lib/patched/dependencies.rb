@@ -25,7 +25,7 @@ module PatchedDependencies
   # @return [Array]
   def fetch gems
     fetched = super gems
-    Google::Cloud::Gemserver::StorageSync.run
+    Google::Cloud::Gemserver::Backend::StorageSync.run
     fetched
   end
 end

@@ -13,13 +13,6 @@
 # limitations under the License.
 
 require "google/cloud/gemserver"
-require "patched/env"
-require "patched/storage"
-require "patched/configuration"
-require "patched/dependencies"
-require "patched/gem_pusher"
-require "patched/gem_yanker"
-require "gemstash"
 require "thor"
 
 module Google
@@ -33,11 +26,10 @@ module Google
       # gemserver and deploy it to a given Google Cloud Platform project.
       #
       class CLI < Thor
-        autoload :Project,       "google/cloud/gemserver/cli/project"
-        autoload :CloudSQL,      "google/cloud/gemserver/cli/cloud_sql"
-        autoload :Key,           "google/cloud/gemserver/cli/key"
-        autoload :Server,        "google/cloud/gemserver/cli/server"
-        autoload :Stats,         "google/cloud/gemserver/cli/stats"
+        autoload :Project,         "google/cloud/gemserver/cli/project"
+        autoload :CloudSQL,        "google/cloud/gemserver/cli/cloud_sql"
+        autoload :Server,          "google/cloud/gemserver/cli/server"
+        autoload :Request,         "google/cloud/gemserver/cli/request"
 
         # Error class thrown when a command that does not exist is run.
         class Error < Thor::Error
@@ -52,7 +44,7 @@ module Google
         end
 
         ##
-        # Starts the gemserver by starting up Gemstash.
+        # Starts the gemserver by starting up gemstash.
         desc "start", "Starts the gem server. This will be run automatically" \
           " after a deploy. Running this locally will start the gemserver "\
           "locally"
@@ -123,10 +115,12 @@ module Google
         method_option :remote, type: :string, aliases: "-r", desc:
           "The gemserver URL, i.e. gemserver.com"
         def create_key
-          return Key.create_key(options[:permissions]) if ENV["APP_ENV"] == "test"
+          if ENV["APP_ENV"] == "test"
+            return Backend::Key.create_key(options[:permissions])
+          end
           if Authentication.new.can_modify?
-            puts Backend.new(options[:remote]).create_key options[:permissions]
-            Key.output_key_info
+            puts Request.new(options[:remote]).create_key options[:permissions]
+            Backend::Key.output_key_info
           else
             puts "You are either not authenticated with gcloud or lack" \
               " access to the gemserver and cannot create a key."
@@ -142,9 +136,11 @@ module Google
         method_option :remote, type: :string, aliases: "-r", desc:
           "The gemserver URL, i.e. gemserver.com"
         def delete_key
-          return Key.delete_key(options[:key]) if ENV["APP_ENV"] == "test"
+          if ENV["APP_ENV"] == "test"
+            return Backend::Key.delete_key(options[:key])
+          end
           if Authentication.new.can_modify?
-            puts Backend.new(options[:remote]).delete_key options[:key]
+            puts Request.new(options[:remote]).delete_key options[:key]
           else
             puts "You are either not authenticated with gcloud or lack" \
               " access to the gemserver and cannot delete a key."
@@ -166,9 +162,9 @@ module Google
         method_option :remote, type: :string, aliases: "-r", desc:
           "The gemserver URL, i.e. gemserver.com"
         def stats
-          return Stats.new.run if ENV["APP_ENV"] == "test"
-          Stats.new.log_app_description
-          puts Backend.new(options[:remote]).stats
+          return Backend::Stats.new.run if ENV["APP_ENV"] == "test"
+          Backend::Stats.new.log_app_description
+          puts Request.new(options[:remote]).stats
         end
 
         desc "gen_config", "Generates configuration files with default" \

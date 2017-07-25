@@ -13,15 +13,16 @@
 # limitations under the License.
 
 require "helper"
+require "gemstash"
 
-describe Google::Cloud::Gemserver::CLI::Key do
+describe Google::Cloud::Gemserver::Backend::Key do
   describe "Key.create_key" do
-    it "calls Gemstash::CLI.start" do
+    it "calls Gemstash::Backend.start" do
       mock = Minitest::Mock.new
       mock.expect :call, nil, [Array]
       Gemstash::CLI.stub :start, mock do
-        GCG::CLI::Key.stub :parse_key, "" do
-          GCG::CLI::Key.create_key
+        GCG::Backend::Key.stub :parse_key, "" do
+          GCG::Backend::Key.create_key
           mock.verify
         end
       end
@@ -29,12 +30,12 @@ describe Google::Cloud::Gemserver::CLI::Key do
   end
 
   describe "Key.delete_key" do
-    it "calls Gemstash::CLI.start" do
+    it "calls Gemstash::Backend.start" do
       mock = Minitest::Mock.new
       mock.expect :call, nil, [Array]
       Gemstash::CLI.stub :start, mock do
-        GCG::CLI::Key.stub :parse_key, "" do
-          GCG::CLI::Key.delete_key ""
+        GCG::Backend::Key.stub :parse_key, "" do
+          GCG::Backend::Key.delete_key ""
           mock.verify
         end
       end

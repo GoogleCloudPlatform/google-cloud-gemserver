@@ -16,36 +16,36 @@ require "helper"
 require "fileutils"
 require "yaml"
 
-describe Google::Cloud::Gemserver::CLI::Key do
+describe Google::Cloud::Gemserver::Backend::Key do
 
   describe "when generating a new key with all permissions" do
     it "must have all permissions" do
-      all_key =  Google::Cloud::Gemserver::CLI::Key.create_key
+      all_key =  Google::Cloud::Gemserver::Backend::Key.create_key
       puts "all_key: #{all_key}"
       wont_be_nil Gemstash::Authorization.check(all_key, "fetch")
       wont_be_nil Gemstash::Authorization.check(all_key, "push")
       wont_be_nil Gemstash::Authorization.check(all_key, "yank")
-      Google::Cloud::Gemserver::CLI::Key.delete_key all_key
+      Google::Cloud::Gemserver::Backend::Key.delete_key all_key
     end
   end
 
   describe "when generating a new key with only read permission" do
     it "must have the read permission" do
-      fetch_key  = Google::Cloud::Gemserver::CLI::Key.create_key("read")
+      fetch_key  = Google::Cloud::Gemserver::Backend::Key.create_key("read")
       puts "fetch_key: #{fetch_key}"
       wont_be_nil Gemstash::Authorization.check(fetch_key, "fetch")
       proc {Gemstash::Authorization.check(fetch_key, "push")}
         .must_raise Gemstash::NotAuthorizedError
       proc {Gemstash::Authorization.check(fetch_key, "yank")}
         .must_raise Gemstash::NotAuthorizedError
-      Google::Cloud::Gemserver::CLI::Key.delete_key fetch_key
+      Google::Cloud::Gemserver::Backend::Key.delete_key fetch_key
     end
   end
 
   describe "when deleting a key" do
     it "must succeed in deleting" do
-      key_to_delete = Google::Cloud::Gemserver::CLI::Key.create_key
-      wont_be_nil Google::Cloud::Gemserver::CLI::Key.delete_key key_to_delete
+      key_to_delete = Google::Cloud::Gemserver::Backend::Key.create_key
+      wont_be_nil Google::Cloud::Gemserver::Backend::Key.delete_key key_to_delete
     end
   end
 
@@ -53,9 +53,9 @@ describe Google::Cloud::Gemserver::CLI::Key do
     it "must map to fetch, yank, and push correctly" do
       MAPPING = {"write" => ["push", "yank"], "read" => ["fetch"]}
       assert MAPPING["write"],
-        Google::Cloud::Gemserver::CLI::Key.send(:map_perms, "write")
+        Google::Cloud::Gemserver::Backend::Key.send(:map_perms, "write")
       assert MAPPING["read"],
-        Google::Cloud::Gemserver::CLI::Key.send(:map_perms, "read")
+        Google::Cloud::Gemserver::Backend::Key.send(:map_perms, "read")
     end
   end
 end

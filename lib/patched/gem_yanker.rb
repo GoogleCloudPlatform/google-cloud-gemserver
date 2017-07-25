@@ -21,7 +21,7 @@ module PatchedGemYanker
   # a gem from the gemserver.
   def serve
     super
-    Google::Cloud::Gemserver::StorageSync.run
+    Google::Cloud::Gemserver::Backend::StorageSync.run
   end
 end
 

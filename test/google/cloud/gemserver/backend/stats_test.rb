@@ -14,10 +14,10 @@
 
 require "helper"
 
-describe Google::Cloud::Gemserver::CLI::Stats do
+describe Google::Cloud::Gemserver::Backend::Stats do
   describe "Stats.new" do
     it "must set the properties" do
-      stats = GCG::CLI::Stats.new
+      stats = GCG::Backend::Stats.new
       assert stats.proj.nil? || stats.proj.class == String
     end
 
@@ -26,7 +26,7 @@ describe Google::Cloud::Gemserver::CLI::Stats do
   describe ".run" do
     it "it calls log_app_description" do
       ENV["APP_ENV"] = "dev"
-      stats = GCG::CLI::Stats.new
+      stats = GCG::Backend::Stats.new
       mock = Minitest::Mock.new
       mock.expect :call, "", ["gcloud app describe"]
       stats.stub :set_project, nil do
@@ -39,7 +39,7 @@ describe Google::Cloud::Gemserver::CLI::Stats do
     end
 
     it "calls log_uptime" do
-      stats = GCG::CLI::Stats.new
+      stats = GCG::Backend::Stats.new
       mock_uptime = Minitest::Mock.new
       mock_uptime.expect :call, nil
 
@@ -50,7 +50,7 @@ describe Google::Cloud::Gemserver::CLI::Stats do
     end
 
     it "calls log_private_gems" do
-      stats = GCG::CLI::Stats.new
+      stats = GCG::Backend::Stats.new
       mock = Minitest::Mock.new
       mock.expect :call, String
       stats.stub :db, [] do
@@ -62,7 +62,7 @@ describe Google::Cloud::Gemserver::CLI::Stats do
     end
 
     it "calls log_cached_gems" do
-      stats = GCG::CLI::Stats.new
+      stats = GCG::Backend::Stats.new
       mock = Minitest::Mock.new
       mock.expect :call, String
       stats.stub :db, [] do

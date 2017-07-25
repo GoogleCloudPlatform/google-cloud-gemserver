@@ -13,7 +13,6 @@
 # limitations under the License.
 
 require "google/cloud/gemserver"
-require "gemstash"
 require "stringio"
 require "fileutils"
 require "yaml"
@@ -21,7 +20,7 @@ require "yaml"
 module Google
   module Cloud
     module Gemserver
-      class CLI
+      module Backend
         ##
         # # Key
         #
@@ -58,7 +57,7 @@ module Google
           def self.create_key permissions = nil
             mapped = map_perms permissions
             args = base_args.concat mapped
-            output = capture_stdout { Gemstash::CLI.start args }
+            output = capture_stdout { GemstashServer.start args }
             key = parse_key(output).chomp
             puts "Created key: #{key}"
             key
@@ -73,7 +72,7 @@ module Google
               "--remove",
               "--key=#{key}"
             ]
-            Gemstash::CLI.start base_args.concat(args)
+            GemstashServer.start base_args.concat(args)
             puts "Deleted key: #{key}"
             true
           end
@@ -108,14 +107,14 @@ module Google
           end
 
           ##
-          # @private The arguments passed to every Gemstash key generation
+          # @private The arguments passed to every gemstash key generation
           # command.
           #
           # @return [Array]
           def self.base_args
             [
               "authorize",
-              "--config-file=#{Configuration.new.config_path}"
+              "--config-file=#{Google::Cloud::Gemserver::Configuration.new.config_path}"
             ]
           end
 

@@ -35,7 +35,7 @@ describe Google::Cloud::Gemserver do
   }
 
   let(:reset) {
-    env = Google::Cloud::Gemserver::CLI::Stats.new.send(:env)
+    env = Google::Cloud::Gemserver::Backend::Stats.new.send(:env)
     env.db[:versions].delete
     env.db[:rubygems].delete
   }
@@ -49,7 +49,7 @@ describe Google::Cloud::Gemserver do
     url = "http://#{HOST}/private"
     `RUBYGEMS_HOST=#{url} gem yank --key #{KEY} #{GEM} --version #{VER}`
   }
-  let(:range) { 15..GCG::CLI::Key::KEY_LENGTH }
+  let(:range) { 15..GCG::Backend::Key::KEY_LENGTH }
 
   after(:all) do
     reset

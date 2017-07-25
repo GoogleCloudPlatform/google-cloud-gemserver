@@ -13,13 +13,12 @@
 # limitations under the License.
 
 require "google/cloud/gemserver"
-require "gemstash"
 require "yaml"
 
 module Google
   module Cloud
     module Gemserver
-      class CLI
+      module Backend
         ##
         # # Stats
         #
@@ -41,7 +40,7 @@ module Google
           # object enabling it to fetch detailed information about the
           # gemserver.
           def initialize
-            @config = Configuration.new
+            @config = Google::Cloud::Gemserver::Configuration.new
             @proj = (@config[:proj_id] || nil).freeze
           end
 
@@ -114,7 +113,7 @@ module Google
               return nil if ENV["APP_ENV"] == "test"
               raise ":proj_id not set in config file"
             end
-            Project.new(@proj).send(:project)
+            Google::Cloud::Gemserver::CLI::Project.new(@proj).send(:project)
           end
 
           ##
@@ -123,8 +122,7 @@ module Google
           #
           # @return [Gemstash::Env]
           def env
-            config = Gemstash::Configuration.new file: @config.config_path
-            Gemstash::Env.new config
+            GemstashServer.env @config.config_path
           end
 
           ##

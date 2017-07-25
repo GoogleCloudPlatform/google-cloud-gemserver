@@ -23,14 +23,14 @@ Gemstash::Web.class_eval do
   # gems, cached gems, gemserver creation time, etc.
   get "/api/v1/stats" do
     content_type "application/json;charset=UTF-8"
-    Google::Cloud::Gemserver::CLI::Stats.new.run
+    Google::Cloud::Gemserver::Backend::Stats.new.run
   end
 
   ##
   # Creates a key used for installing or pushing gems to the gemserver
   # with given permissions. By default, a key with all permissions is created.
   post "/api/v1/key" do
-    key = Google::Cloud::Gemserver::CLI::Key.create_key params["permissions"]
+    key = Google::Cloud::Gemserver::Backend::Key.create_key params["permissions"]
     content_type "application/json;charset=UTF-8"
     "Generated key: #{key}"
   end
@@ -38,7 +38,7 @@ Gemstash::Web.class_eval do
   ##
   # Deletes a key.
   put "/api/v1/key" do
-    res = Google::Cloud::Gemserver::CLI::Key.delete_key params["key"]
+    res = Google::Cloud::Gemserver::Backend::Key.delete_key params["key"]
     content_type "application/json;charset=UTF-8"
     if res
       "Deleted key #{params["key"]} successfully."

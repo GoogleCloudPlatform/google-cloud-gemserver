@@ -22,13 +22,12 @@ module Google
     # a gemserver to a Google Cloud Platform project.
     #
     module Gemserver
-      autoload :CLI,           "google/cloud/gemserver/cli"
-      autoload :VERSION,       "google/cloud/gemserver/version"
-      autoload :Configuration, "google/cloud/gemserver/configuration"
-      autoload :StorageSync,   "google/cloud/gemserver/storage_sync"
-      autoload :GCS,           "google/cloud/gemserver/gcs"
-      autoload :Authentication,"google/cloud/gemserver/authentication"
-      autoload :Backend,       "google/cloud/gemserver/backend"
+      autoload :CLI,            "google/cloud/gemserver/cli"
+      autoload :VERSION,        "google/cloud/gemserver/version"
+      autoload :Configuration,  "google/cloud/gemserver/configuration"
+      autoload :GCS,            "google/cloud/gemserver/gcs"
+      autoload :Authentication, "google/cloud/gemserver/authentication"
+      autoload :Backend,        "google/cloud/gemserver/backend"
     end
   end
 end

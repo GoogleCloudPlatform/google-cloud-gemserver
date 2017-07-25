@@ -4,7 +4,7 @@ rvm:
 
 install:
   - echo "Decrypt service account key file"
-  - openssl aes-256-cbc -K $encrypted_c78c0e330755_key -iv $encrypted_c78c0e330755_iv -in secrets/service-account-key.json.enc -out secrets/service-account-key.json -d
+  - openssl aes-256-cbc -K $encrypted_40f8911e359f_key -iv $encrypted_40f8911e359f_iv -in secrets/service-account-key.json.enc -out secrets/service-account-key.json -d
 
   - echo "Install gcloud SDK"
   - export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
@@ -35,7 +35,7 @@ script:
   - echo "Install and setup google-cloud-gemserver"
   - rake install
   - google-cloud-gemserver gen_config
-  - openssl aes-256-cbc -K $encrypted_ce7d4acbe9ae_key -iv $encrypted_ce7d4acbe9ae_iv -in secrets/app.yaml.enc -out secrets/app.yaml -d
+  - openssl aes-256-cbc -K $encrypted_40f8911e359f_key -iv $encrypted_40f8911e359f_iv -in secrets/app.yaml.enc -out secrets/app.yaml -d
   - cp secrets/app.yaml ~/.google_cloud_gemserver/app.yaml
 
   - echo "Setup gemserver keys"
@@ -52,7 +52,9 @@ script:
   - bundle exec rake test
 
   - echo "Run acceptance tests"
+  - gcloud config set project $PROJECT_NAME
   - host=$GEMSERVER_PRIVATE_URL key=$GEMSERVER_KEY_NAME bundle exec rake acceptance
 
   - echo "Run integration tests"
+  - gcloud config set project $PROJECT_NAME
   - host=$GEMSERVER_PRIVATE_URL key=$GEMSERVER_KEY_NAME bundle exec rake integration
