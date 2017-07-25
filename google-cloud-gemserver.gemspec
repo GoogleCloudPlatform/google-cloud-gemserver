@@ -3,6 +3,13 @@
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
+dirs = ["bin", "lib", "acceptance", "integration", "test", "secrets", "docs"]
+files = [
+  "google-cloud-gemserver.gemspec", "Gemfile", "Gemfile.lock", "Rakefile",
+  "CONTRIBUTING.md", "README.md", "LICENSE", ".travis.yml", ".yardopts",
+  ".rubocop.yml"
+]
+
 require "google/cloud/gemserver/version"
 
 Gem::Specification.new do |spec|
