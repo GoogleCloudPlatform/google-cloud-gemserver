@@ -104,7 +104,7 @@ module Google
             should_create = user_input
             return if should_create.downcase == "n"
             gemserver_url = remote
-            key = extract_key(Backend.new(gemserver_url).create_key)
+            key = extract_key(Request.new(gemserver_url).create_key)
             set_bundle key, gemserver_url
             set_gem_credentials key
           end
@@ -175,9 +175,14 @@ module Google
             <<~SOURCE
               source "https://rubygems.org"
 
+              gem "google-cloud-gemserver", "#{Google::Cloud::Gemserver::VERSION}", path: "."
               gem "concurrent-ruby", require: "concurrent"
               gem "gemstash", git: "https://github.com/bundler/gemstash.git", ref: "a5a78e2"
-              gemspec
+              gem "mysql2", "~> 0.4"
+              gem "filelock", "~> 1.1.1"
+              gem "google-cloud-storage", "~> 1.1.0"
+              gem "google-cloud-resource_manager", "~> 0.24"
+              gem "activesupport", "~> 4.2"
             SOURCE
           end
 
