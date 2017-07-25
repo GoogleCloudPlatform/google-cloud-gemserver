@@ -6,6 +6,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "google/cloud/gemserver/version"
 
 Gem::Specification.new do |spec|
+
   spec.name          = "google-cloud-gemserver"
   spec.version       = Google::Cloud::Gemserver::VERSION
   spec.authors       = ["Arham Ahmed"]
@@ -17,9 +18,9 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/GoogleCloudPlatform/google-cloud-gemserver"
   spec.license       = "Apache-2.0"
 
-  spec.files         = Dir.glob("#{__dir__}/**/*").reject do |f|
-    f.include?("coverage") || f.include?(".git/") || f.include?("doc/")
-  end.map { |f| f[__dir__.size + 1..f.size] }
+  spec.files         = Dir["**/*"].select do |f|
+    f.match(/^(bin|lib)/) && File.file?(f)
+  end + ["CONTRIBUTING.md", "README.md", "LICENSE", ".yardopts"]
 
   spec.executables   = "google-cloud-gemserver"
   spec.require_paths = ["lib"]

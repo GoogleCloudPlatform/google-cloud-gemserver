@@ -25,8 +25,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 Note: you will need gemstash installed from
 [source](https://github.com/bundler/gemstash) to run acceptance and integration
-tests. Modify the Gemfile by uncommenting the `gem "gemstash"` line and run
-bundle install.
+tests.
 
   1) Edit your app.yaml to use a separate database to run tests on otherwise
     your existing private gems can get deleted.

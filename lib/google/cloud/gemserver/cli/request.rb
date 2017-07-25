@@ -52,7 +52,7 @@ module Google
           #
           # @return [String]
           def create_key permissions = nil
-            send_req "post", "/api/v1/key", {permissions: permissions}
+            send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions}
           end
 
           ##
@@ -62,7 +62,7 @@ module Google
           #
           # @return [String]
           def delete_key key
-            send_req "put", "/api/v1/key", {key: key}
+            send_req Net::HTTP::Put, "/api/v1/key", {key: key}
           end
 
           ##
@@ -71,7 +71,7 @@ module Google
           #
           # @return [String]
           def stats
-            send_req "get", "/api/v1/stats"
+            send_req Net::HTTP::Get, "/api/v1/stats"
           end
 
           private
@@ -84,7 +84,7 @@ module Google
           ##
           # @private Makes a request to the gemserver and returns the response.
           #
-          # @param [String] type The type of HTTP request.
+          # @param [Net::HTTP] type The type of HTTP request.
           #
           # @param [String] endpoint The endpoint the request is made to on the
           # gemserver.
@@ -94,14 +94,9 @@ module Google
           #
           # @return [String]
           def send_req type, endpoint, params = nil
-            if type == "post"
-              req = Net::HTTP::Post.new endpoint
+            req = type.new endpoint
+            if type != Net::HTTP::Get
               req.set_form_data(params) if params
-            elsif type == "put"
-              req = Net::HTTP::Put.new endpoint
-              req.set_form_data(params) if params
-            elsif type == "get"
-              req = Net::HTTP::Get.new endpoint
             end
             (@http.request req).body
           end

@@ -55,7 +55,7 @@ module Google
               "--no-daemonize",
               "--config-file=#{path}"
             ].freeze
-            Google::Cloud::Gemserver::StorageSync.download_service
+            Google::Cloud::Gemserver::Backend::StorageSync.download_service
             Google::Cloud::Gemserver::Backend::GemstashServer.start args
           end
 
@@ -168,23 +168,29 @@ module Google
           end
 
           ##
+          # @private The Gemfile used by the gemserver on Google App Engine.
+          #
+          # @return [String]
+          def gemfile_source
+            <<~SOURCE
+              source "https://rubygems.org"
+
+              gem "concurrent-ruby", require: "concurrent"
+              gem "gemstash", git: "https://github.com/bundler/gemstash.git", ref: "a5a78e2"
+              gemspec
+            SOURCE
+          end
+
+          ##
           # @private Creates a Gemfile and Gemfile.lock for the gemserver that
           # runs on Google App Engine such that gemstash is not required
           # client side for the CLI.
           def gemfile
-            source = %{
-source "https://rubygems.org"
-
-gem "concurrent-ruby", require: "concurrent"
-gem "gemstash", git: "https://github.com/bundler/gemstash.git"
-gemspec
-            }
             File.open("#{Configuration::SERVER_PATH}/Gemfile", "w") do |f|
-              f.write source
+              f.write gemfile_source
             end
 
-            run_cmd "rm #{Configuration::SERVER_PATH}/Gemfile.lock"
-
+            require "bundler"
             Bundler.with_clean_env do
               run_cmd "cd #{Configuration::SERVER_PATH} && bundle lock"
             end

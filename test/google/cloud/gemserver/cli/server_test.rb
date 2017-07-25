@@ -31,7 +31,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock_server.expect :call, nil, [Array]
 
       Gemstash::CLI.stub :start, mock_server do
-        Google::Cloud::Gemserver::StorageSync.stub :download_service, nil do
+        Google::Cloud::Gemserver::Backend::StorageSync.stub :download_service, nil do
           server.start
           mock_server.verify
         end

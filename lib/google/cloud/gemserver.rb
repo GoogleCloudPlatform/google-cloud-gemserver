@@ -25,7 +25,6 @@ module Google
       autoload :CLI,            "google/cloud/gemserver/cli"
       autoload :VERSION,        "google/cloud/gemserver/version"
       autoload :Configuration,  "google/cloud/gemserver/configuration"
-      autoload :StorageSync,    "google/cloud/gemserver/storage_sync"
       autoload :GCS,            "google/cloud/gemserver/gcs"
       autoload :Authentication, "google/cloud/gemserver/authentication"
 
@@ -40,6 +39,7 @@ module Google
         autoload :GemstashServer, "google/cloud/gemserver/backend/gemstash_server"
         autoload :Key,            "google/cloud/gemserver/backend/key"
         autoload :Stats,          "google/cloud/gemserver/backend/stats"
+        autoload :StorageSync,    "google/cloud/gemserver/backend/storage_sync"
       end
     end
   end

@@ -21,7 +21,7 @@ module PatchedGemPusher
   # gem to the gemserver.
   def serve
     super
-    Google::Cloud::Gemserver::StorageSync.run
+    Google::Cloud::Gemserver::Backend::StorageSync.run
   end
 end
 

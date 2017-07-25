@@ -23,6 +23,7 @@ module Google
       #
       # Manages the permissions of the currently logged in user with the gcloud
       # sdk.
+      #
       class Authentication
 
         ##
