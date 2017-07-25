@@ -14,20 +14,20 @@
 
 module Google
   module Cloud
-    ##
-    #
-    # # Gemserver
-    #
-    # Gemserver provides a command line interface to create, manage, and deploy
-    # a gemserver to a Google Cloud Platform project.
-    #
     module Gemserver
-      autoload :CLI,            "google/cloud/gemserver/cli"
-      autoload :VERSION,        "google/cloud/gemserver/version"
-      autoload :Configuration,  "google/cloud/gemserver/configuration"
-      autoload :GCS,            "google/cloud/gemserver/gcs"
-      autoload :Authentication, "google/cloud/gemserver/authentication"
-      autoload :Backend,        "google/cloud/gemserver/backend"
+      ##
+      #
+      # # Backend
+      #
+      # Contains services that run on Google App Engine directly leveraging
+      # tools such as Cloud SQL proxy.
+      #
+      module Backend
+        autoload :GemstashServer, "google/cloud/gemserver/backend/gemstash_server"
+        autoload :Key,            "google/cloud/gemserver/backend/key"
+        autoload :Stats,          "google/cloud/gemserver/backend/stats"
+        autoload :StorageSync,    "google/cloud/gemserver/backend/storage_sync"
+      end
     end
   end
 end

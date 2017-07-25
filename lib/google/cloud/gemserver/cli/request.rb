@@ -47,8 +47,8 @@ module Google
           # Send a request to the gemserver to create a key with certain
           # permissions.
           #
-          # @param [String] permissions The permissions the key will have (read
-          # , write, or both). Optional.
+          # @param [String] permissions The permissions the generated key will
+          # have (read, write, or both). Optional.
           #
           # @return [String]
           def create_key permissions = nil
