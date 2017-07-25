@@ -40,13 +40,12 @@ script:
       sudo chmod 777 /cloudsql;
 
       echo "Start cloud_sql_proxy";
-      ./cloud_sql_proxy -instances=$CLOUD_SQL_ICN -dir=/cloudsql &;
+      ./cloud_sql_proxy -instances=$CLOUD_SQL_ICN -dir=/cloudsql &
 
       echo "Setup gemserver keys";
       touch ~/.gem/credentials;
       chmod 0600 ~/.gem/credentials;
-      # Write :GEMSERVER_KEY_NAME: $GEMSERVER_KEY to ~/.gem/credentials in a
-      # convoluted way because Travis parses strings with : as mappings
+      echo "Writing [colon]GEMSERVER_KEY_NAME[colon] $GEMSERVER_KEY to ~/.gem/credentials in a convoluted way because Travis parses strings with [colon] as mappings"
       echo :$GEMSERVER_KEY_NAME >> ~/.gem/credentials;
       sed -i '$s/$/:/' ~/.gem/credentials;
       sed -i '$s/$/ '"$GEMSERVER_KEY"'/' ~/.gem/credentials;
