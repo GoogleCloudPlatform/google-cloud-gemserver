@@ -15,6 +15,7 @@
 require "google/cloud/gemserver"
 require "fileutils"
 require "yaml"
+require "open3"
 
 module Google
   module Cloud
@@ -38,6 +39,7 @@ module Google
           # Creates a Server instance by initializing a Configuration object
           # that will be used to access paths to necessary configuration files.
           def initialize
+            ensure_gcloud_beta!
             @config = Configuration.new
           end
 
@@ -68,7 +70,7 @@ module Google
             begin
               prepare_dir
               puts "Beginning gemserver deployment..."
-              Google::Cloud::Gemserver::Deployer.new.run # TODO, this does too much
+              Google::Cloud::Gemserver::Deployer.new.deploy
               @config.save_to_cloud
               setup_default_keys
             ensure
@@ -82,8 +84,13 @@ module Google
           def update
             puts "Updating gemserver..."
             if @config.metadata[:platform] == "gke"
-              Google::Cloud::Gemserver::Deployer.new.run
-              run_cmd "kubectl apply -f #{Configuration::SERVER_PATH}/deployment.yaml"
+              deployer = Google::Cloud::Gemserver::Deployer.new
+              deploy_file = "#{Configuration::SERVER_PATH}/deployment.yaml"
+              deployer.build_docker_image Configuration::SERVER_PATH do |location|
+                deployer.push_docker_image location do
+                  run_cmd "kubectl apply -f #{deploy_file}"
+                end
+              end
             else
               deploy
             end
@@ -93,17 +100,14 @@ module Google
           # Deletes a given gemserver and its Cloud SQL instance
           def delete
             puts "Deleting gemserver..."
-            # TODO ensure beta component is installed at the start, update readme
             if @config.metadata[:platform] == "gae"
               run_cmd "gcloud app services delete default"
             else
-              # TODO
-              # delete service
+              name = user_input "Enter the name of the container cluster"
+              zone = user_input "Enter the zone of the cluster"
               run_cmd "kubectl delete service #{Deployer::IMAGE_NAME}"
-              # delete deployment
               run_cmd "kubectl delete deployment #{Deployer::IMAGE_NAME}"
-              # delete cluster
-              Google::Cloud::Gemserver::Deployer.new.delete_cluster
+              run_cmd "gcloud container clusters delete #{name} -z #{zone}"
             end
             inst = @config.app["beta_settings"]["cloud_sql_instances"]
               .split(":").pop
@@ -250,6 +254,24 @@ module Google
           #
           # @return [String]
           def user_input
+            STDIN.gets.chomp
+          end
+
+          ##
+          # @private Ensure the gcloud SDK beta component is installed.
+          def ensure_gcloud_beta!
+            Open3.capture3 "yes | gcloud beta --help"
+            nil
+          end
+
+          ##
+          # @private Display a prompt and get user input.
+          #
+          # @param [String] prompt The prompt displayed to the user.
+          #
+          # @return [String]
+          def user_input prompt
+            puts prompt
             STDIN.gets.chomp
           end
         end

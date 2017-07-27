@@ -31,9 +31,10 @@ Or install it yourself as:
   2) Create a Google App Engine project in the GCP if one does not already
   exist. Ensure billing is enabled.
   3) Install and setup the [gcloud SDK](https://cloud.google.com/sdk/downloads). Currently, versions 161+ are supported.
-  4) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
+  4) Install the beta and kubectl component for gcloud by running `gcloud component install beta kubectl`
+  5) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
   Using a service account is the recommended method for authentication; application default credentials should only be used for development purporses. Read this [authentication guide](docs/authentication.md) for more information.
-  5) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
+  6) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
 
 ### Typical Workflow
   1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the CLoud SQL SLA coverage.
