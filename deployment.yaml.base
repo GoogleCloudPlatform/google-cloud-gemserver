@@ -1,0 +1,59 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: %{image_name}
+  labels:
+    name: %{image_name}
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: %{image_name}
+        name: %{image_name}
+    spec:
+      containers:
+        - image: %{image_location}
+          name: %{image_name}
+          env:
+            - name: DB_HOST
+              value: 127.0.0.1
+            # These are required to start the pod. Secrets may be used here.
+            # [START cloudsql_secrets]
+            - name: DB_PASSWORD
+              value: "test"
+            - name: DB_USER
+              value: "test"
+            - name: GEMSERVER_ON_GKE
+              value: "true"
+            # [END cloudsql_secrets]
+          ports:
+            - containerPort: 8080
+              name: %{image_name}
+          volumeMounts:
+            - name: cloudsql
+              mountPath: /cloudsql
+        # [START proxy_container]
+        - image: gcr.io/cloudsql-docker/gce-proxy:1.09
+          name: cloudsql-proxy
+          command: %{sql_proxy_command}
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs
+            - name: cloudsql
+              mountPath: /cloudsql
+        # [END proxy_container]
+      # [START volumes]
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+        - name: ssl-certs
+          hostPath:
+            path: /etc/ssl/certs
+        - name: cloudsql
+          emptyDir:
+      # [END volumes]

@@ -28,6 +28,7 @@ module Google
       autoload :GCS,            "google/cloud/gemserver/gcs"
       autoload :Authentication, "google/cloud/gemserver/authentication"
       autoload :Backend,        "google/cloud/gemserver/backend"
+      autoload :Deployer,       "google/cloud/gemserver/deployer"
     end
   end
 end

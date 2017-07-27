@@ -63,6 +63,8 @@ module Google
           "Existing project to deploy gemserver to"
         method_option :use_inst, type: :string, aliases: "-i", desc:
           "Existing project to deploy gemserver to"
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to deploy the gemserver to (gae or gke)"
         def create
           prepare
           Server.new.deploy
@@ -78,8 +80,10 @@ module Google
           "Existing project to deploy gemserver to"
         method_option :use_inst, type: :string, aliases: "-i", desc:
           "Existing Cloud SQL instance to us"
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to deploy the gemserver to (gae or gke)"
         def prepare
-          Project.new(options[:use_proj]).create
+          Project.new(options[:use_proj], options[:platform]).create
           CloudSQL.new(options[:use_inst]).run
         end
 
@@ -102,7 +106,7 @@ module Google
         "Project id of GCP project the gemserver was deployed to. Warning:"\
          " parent project and CloudSQL instance will also be deleted"
         def delete
-          Server.new.delete options[:use_proj]
+          Server.new.delete #TODO
         end
 
         ##
@@ -163,7 +167,7 @@ module Google
           "The gemserver URL, i.e. gemserver.com"
         def stats
           return Backend::Stats.new.run if ENV["APP_ENV"] == "test"
-          Backend::Stats.new.log_app_description
+          #Backend::Stats.new.log_app_description
           puts Request.new(options[:remote]).stats
         end
 

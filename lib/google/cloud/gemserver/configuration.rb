@@ -263,7 +263,7 @@ module Google
         # @private Generates a set of configuration files for the gemserver to
         # run and deploy to Google App Engine.
         def gen_config
-          return if on_appengine
+          return if on_gcp
           FileUtils.mkpath config_dir unless Dir.exist? config_dir
 
           write_file "#{config_dir}/app.yaml",        app_config, true
@@ -301,6 +301,25 @@ module Google
           puts "Gemserver is running with this configuration:"
           puts YAML.load_file(GCS_PATH).to_yaml
           cleanup
+        end
+
+        ##
+        # @private Writes metadata to metadata.yml in the gemserver's config
+        # directory.
+        def write_metadata options
+          path = "#{config_dir}/metadata.yml"
+          File.open(path, "w") { |f| YAML.dump options, f }
+        end
+
+        ##
+        # @private Fetches metadata from metadata.yml in the gemserver's config
+        # directory.
+        #
+        # @return [Hash]
+        def metadata
+          path = "#{config_dir}/metadata.yml"
+          return Hash.new unless File.file?(path)
+          YAML.load_file path
         end
 
         private
@@ -453,17 +472,18 @@ module Google
         #
         # @return [String]
         def config_dir
-          return GAE_DIR if on_appengine
+          return GAE_DIR if on_gcp
           dir = ENV["GEMSERVER_CONFIG_DIR"]
           dir.nil? == true ? CONFIG_DIR : dir
         end
 
         ##
-        # @private Determines if the gemserver is running on Google App Engine.
+        # @private Determines if the gemserver is running on Google Cloud
+        # platform.
         #
         # @return [boolean]
-        def on_appengine
-          !ENV["GEMSERVER_ON_APPENGINE"].nil?
+        def on_gcp
+          !ENV["GEMSERVER_ON_APPENGINE"].nil? || !ENV["GEMSERVER_ON_GKE"].nil?
         end
 
         ##

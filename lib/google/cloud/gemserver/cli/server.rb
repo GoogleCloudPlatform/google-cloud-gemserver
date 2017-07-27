@@ -64,11 +64,11 @@ module Google
           # environment variable is set to "production." Otherwise, the
           # gemserver is started locally.
           def deploy
+            return start if ["test", "dev"].include? ENV["APP_ENV"]
             begin
-              return start if ["test", "dev"].include? ENV["APP_ENV"]
               prepare_dir
               puts "Beginning gemserver deployment..."
-              run_cmd "gcloud app deploy #{Configuration::SERVER_PATH}/app.yaml -q"
+              Google::Cloud::Gemserver::Deployer.new.run # TODO, this does too much
               @config.save_to_cloud
               setup_default_keys
             ensure
@@ -81,17 +81,33 @@ module Google
           # redeploying it.
           def update
             puts "Updating gemserver..."
-            deploy
+            if @config.metadata[:platform] == "gke"
+              Google::Cloud::Gemserver::Deployer.new.run
+              run_cmd "kubectl apply -f #{Configuration::SERVER_PATH}/deployment.yaml"
+            else
+              deploy
+            end
           end
 
           ##
-          # Deletes a given gemserver by its parent project's ID.
-          #
-          # @param [String] proj_id The project ID of the project the gemserver
-          # was deployed to.
-          def delete proj_id
-            puts "Deleting gemserver with parent project"
-            run_cmd "gcloud projects delete #{proj_id}"
+          # Deletes a given gemserver and its Cloud SQL instance
+          def delete
+            puts "Deleting gemserver..."
+            # TODO ensure beta component is installed at the start, update readme
+            if @config.metadata[:platform] == "gae"
+              run_cmd "gcloud app services delete default"
+            else
+              # TODO
+              # delete service
+              run_cmd "kubectl delete service #{Deployer::IMAGE_NAME}"
+              # delete deployment
+              run_cmd "kubectl delete deployment #{Deployer::IMAGE_NAME}"
+              # delete cluster
+              Google::Cloud::Gemserver::Deployer.new.delete_cluster
+            end
+            inst = @config.app["beta_settings"]["cloud_sql_instances"]
+              .split(":").pop
+            run_cmd "gcloud beta sql instances delete #{inst}"
           end
 
           private
