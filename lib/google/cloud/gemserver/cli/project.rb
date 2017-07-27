@@ -51,8 +51,9 @@ module Google
           def create
             raise "Project name was not provided!" unless @proj_name
             begin
-              `gcloud config set project #{@proj_name}`
+              run_cmd "gcloud config set project #{@proj_name}"
               @config.update_config @proj_name, :proj_id
+              create_gae_project
               enable_api
               enable_billing
               project
@@ -70,7 +71,32 @@ module Google
           private
 
           ##
-          # Prompts the user to press enter.
+          # @private Checks if the current Google Cloud Platform project
+          # contains a Google App Engine project. If not, one is created.
+          def create_gae_project
+            return if project_exists?
+            puts "Required Google App Engine project does not exist."
+            run_cmd "gcloud app create"
+          end
+
+          ##
+          # @private Runs a given command on the local machine.
+          #
+          # @param [String] args The command to be run.
+          def run_cmd args
+            `#{args}`
+          end
+
+          ##
+          # @private Checks if a Google App Engine project exists.
+          #
+          # @return [Boolean]
+          def project_exists?
+            system "gcloud app describe > /dev/null 2>&1"
+          end
+
+          ##
+          # @private Prompts the user to press enter.
           #
           # @return [String]
           def prompt_user
@@ -78,7 +104,7 @@ module Google
           end
 
           ##
-          # Fetches a given project on Google Cloud Platform.
+          # @private Fetches a given project on Google Cloud Platform.
           #
           # @return [Google::Cloud::ResourceManager::Project]
           def project
@@ -87,8 +113,8 @@ module Google
           end
 
           ##
-          # Prompts the user to enable necessary APIs for the gemserver to
-          # work as intended.
+          # @private Prompts the user to enable necessary APIs for the
+          # gemserver to work as intended.
           #
           # @return [String]
           def enable_api
@@ -109,7 +135,7 @@ module Google
           end
 
           ##
-          # Prompts the user to enable billing such that the gemserver
+          # @private Prompts the user to enable billing such that the gemserver
           # work as intended.
           #
           # @return [String]
