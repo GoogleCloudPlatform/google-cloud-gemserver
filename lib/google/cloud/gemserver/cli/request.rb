@@ -40,7 +40,7 @@ module Google
           # gemserver.
           def initialize url = nil
             gemserver_url = url.nil? == true ? remote : url
-            @http = Net::HTTP.new gemserver_url, 8080
+            @http = Net::HTTP.new gemserver_url
           end
 
           ##
