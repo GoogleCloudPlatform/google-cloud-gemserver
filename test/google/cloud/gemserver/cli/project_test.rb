@@ -44,14 +44,14 @@ describe Google::Cloud::Gemserver::CLI::Project do
     it "creates an App Engine project if it does not exist" do
       project = GCG::CLI::Project.new "test"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [String]
+      mock.expect :call, nil, ["gcloud config set project test"]
       mock.expect :call, nil, ["gcloud app create"]
 
       project.stub :project, nil do
         project.stub :prompt_user, nil do
           project.config.stub :update_config, nil do
             project.stub :project_exists?, false do
-              project.stub :run_cmd, mock do
+              project.stub :system, mock do
                 project.create
                 mock.verify
               end

@@ -51,7 +51,7 @@ module Google
           def create
             raise "Project name was not provided!" unless @proj_name
             begin
-              run_cmd "gcloud config set project #{@proj_name}"
+              system "gcloud config set project #{@proj_name}"
               @config.update_config @proj_name, :proj_id
               create_gae_project
               enable_api
@@ -76,15 +76,7 @@ module Google
           def create_gae_project
             return if project_exists?
             puts "Required Google App Engine project does not exist."
-            run_cmd "gcloud app create"
-          end
-
-          ##
-          # @private Runs a given command on the local machine.
-          #
-          # @param [String] args The command to be run.
-          def run_cmd args
-            `#{args}`
+            system "gcloud app create"
           end
 
           ##
