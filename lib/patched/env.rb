@@ -20,13 +20,22 @@ module PatchedEnv
   ##
   # Monkey patch to support Cloud SQL as an adapter
   def db
-    if config[:db_adapter] == "cloud_sql"
-      connection = Sequel.connect config.database_connection_config
-      Gemstash::Env.migrate connection
-      connection
-    else
-      super
-    end
+    return @db if @db
+
+    @db = if config[:db_adapter] == "cloud_sql"
+        connection = Sequel.connect config.database_connection_config
+        migrate_cloud_sql connection
+        connection
+      else
+        super
+      end
+  end
+
+  def migrate_cloud_sql database
+    Sequel.extension :migration
+    lib_dir = Gem::Specification.find_by_name("gemstash").lib_dirs_glob
+    m_dir = "#{lib_dir}/gemstash/migrations"
+    Sequel::Migrator.run database, m_dir, use_transactions: false
   end
 end
 
