@@ -167,7 +167,7 @@ module Google
           "The gemserver URL, i.e. gemserver.com"
         def stats
           return Backend::Stats.new.run if ENV["APP_ENV"] == "test"
-          #Backend::Stats.new.log_app_description
+          Backend::Stats.new.log_app_description
           puts Request.new(options[:remote]).stats
         end
 

@@ -36,7 +36,23 @@ Or install it yourself as:
   Using a service account is the recommended method for authentication; application default credentials should only be used for development purporses. Read this [authentication guide](docs/authentication.md) for more information.
   6) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
 
-### Typical Workflow
+### Gemserver on Google Container Engine Workflow
+1) Set the GEMSERVER_CREDS environment variable to the path to your project
+service account.
+2) Create a service account with a role "Cloud SQL Client". Create and download
+a key for this service account.
+3) Run `kubectl create secret generic cloudsql-instance-credentials --from-file=credentials.json=KEY_FILE_PATH`
+where KEY_FILE_PATH is the path to the service account key you
+downloaded in the previous step.
+4) To deploy the gemserver, run `google-cloud-gemserver create --use-proj
+YOUR_PROJECT_ID --platform gke`. If you want to use an existing Cloud SQL
+instance, add `--use-inst YOUR_CLOUDSQL_INSTANCE_NAME` into the above command
+otherwise a new instance will be created.
+5) You will be prompted to enter the name of the
+Google Container Engine cluster to deploy to. If you do not have an existing
+one, a new one will be created.
+
+### Gemserver on Google App Engine Workflow
   1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the CLoud SQL SLA coverage.
   2) Generate a key (referred to as my-key) by running `google-cloud-gemserver create_key` for your gemserver. By default, this generates a key with both read and write permissions. For more information about keys, read [this](docs/key.md).
   3) Add this key to your bundle config by running `bundle config http://gemserver-url.com/private/ my-key` where gemserver-url is the same as your project's url, e.g. http://my-project.appspot.com/private/. This is necessary to download gems.

@@ -62,7 +62,12 @@ module Google
             return "" if ENV["APP_ENV"] == "test"
             set_project
             puts "Project Information:"
-            puts run_cmd("gcloud app describe").gsub("\n", "\n\t").prepend "\t"
+            if @config.metadata[:platform] == "gke"
+              service_name = Google::Cloud::Gemserver::Deployer::IMAGE_NAME
+              system "kubectl describe service #{service_name}"
+            else
+              puts run_cmd("gcloud app describe").gsub("\n", "\n\t").prepend "\t"
+            end
           end
 
           private
@@ -138,7 +143,7 @@ module Google
           ##
           # @private Sets the gcloud project to the project of the gemserver.
           def set_project
-            run_cmd "gcloud config set project #{@proj}"
+            system "gcloud config set project #{@proj}"
           end
 
           ##

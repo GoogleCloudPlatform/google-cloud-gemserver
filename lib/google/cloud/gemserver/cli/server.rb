@@ -88,7 +88,7 @@ module Google
               deploy_file = "#{Configuration::SERVER_PATH}/deployment.yaml"
               deployer.build_docker_image Configuration::SERVER_PATH do |location|
                 deployer.push_docker_image location do
-                  run_cmd "kubectl apply -f #{deploy_file}"
+                  system "kubectl apply -f #{deploy_file}"
                 end
               end
             else
@@ -101,17 +101,17 @@ module Google
           def delete
             puts "Deleting gemserver..."
             if @config.metadata[:platform] == "gae"
-              run_cmd "gcloud app services delete default"
+              system "gcloud app services delete default"
             else
               name = user_input "Enter the name of the container cluster"
               zone = user_input "Enter the zone of the cluster"
-              run_cmd "kubectl delete service #{Deployer::IMAGE_NAME}"
-              run_cmd "kubectl delete deployment #{Deployer::IMAGE_NAME}"
-              run_cmd "gcloud container clusters delete #{name} -z #{zone}"
+              system "kubectl delete service #{Deployer::IMAGE_NAME}"
+              system "kubectl delete deployment #{Deployer::IMAGE_NAME}"
+              system "gcloud container clusters delete #{name} -z #{zone}"
             end
             inst = @config.app["beta_settings"]["cloud_sql_instances"]
               .split(":").pop
-            run_cmd "gcloud beta sql instances delete #{inst}"
+            system "gcloud beta sql instances delete #{inst}"
           end
 
           private
@@ -120,8 +120,7 @@ module Google
           # @private Creates a key with all permissions and sets it in the
           # necessary configurations (gem credentials and bundle config).
           def setup_default_keys
-            puts "Would you like to setup a default key? [Y/n] (default yes)"
-            should_create = user_input
+            should_create = user_input "Would you like to setup a default key? [Y/n] (default yes)"
             return if should_create.downcase == "n"
             gemserver_url = remote
             key = extract_key(Request.new(gemserver_url).create_key)
