@@ -16,6 +16,10 @@ require "helper"
 require "gemstash"
 
 describe Google::Cloud::Gemserver::CLI::Server do
+
+  let(:gae) { { platform: "gae" } }
+  let(:gke) { { platform: "gke" } }
+
   describe "Server.new" do
     it "must set the properties" do
       server = GCG::CLI::Server.new
@@ -40,19 +44,20 @@ describe Google::Cloud::Gemserver::CLI::Server do
   end
 
   describe ".deploy" do
-    it "calls gcloud app deploy" do
+    it "calls Deployer" do
       server = GCG::CLI::Server.new
-      app_path = "#{GCG::Configuration::SERVER_PATH}/app.yaml"
       ENV["APP_ENV"] = "production"
-      mock_server = Minitest::Mock.new
-      mock_server.expect :call, nil, ["gcloud app deploy #{app_path} -q"]
+      mock = Minitest::Mock.new
+      mock.expect :deploy, :nil
 
-      server.stub :run_cmd, mock_server do
-        server.stub :prepare_dir, nil do
-          server.config.stub :save_to_cloud, nil do
-            server.stub :setup_default_keys, nil do
-              server.deploy
-              mock_server.verify
+      server.config.stub :metadata, gae do
+        Google::Cloud::Gemserver::Deployer.stub :new, mock do
+          server.stub :prepare_dir, nil do
+            server.config.stub :save_to_cloud, nil do
+              server.stub :setup_default_keys, nil do
+                server.deploy
+                mock.verify
+              end
             end
           end
         end
@@ -62,27 +67,64 @@ describe Google::Cloud::Gemserver::CLI::Server do
   end
 
   describe ".update" do
-    it "calls deploy" do
+    it "calls deploy for gae" do
       server = GCG::CLI::Server.new
       mock_server = Minitest::Mock.new
       mock_server.expect :call, nil
 
-      server.stub :deploy, mock_server do
-        server.update
-        mock_server.verify
+      server.config.stub :metadata, gae do
+        server.stub :deploy, mock_server do
+          server.update "test"
+          mock_server.verify
+        end
+      end
+    end
+
+    it "calls kubectl apply for gke" do
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :update_gke_deploy, nil
+
+      server.config.stub :metadata, gke do
+        Google::Cloud::Gemserver::Deployer.stub :new, mock do
+          server.update
+          mock.verify
+        end
       end
     end
   end
 
   describe ".delete" do
-    it "calls gcloud projects delete" do
+    it "calls gcloud app services delete default for gae" do
       server = GCG::CLI::Server.new
       mock_server = Minitest::Mock.new
-      mock_server.expect :call, nil, ["gcloud projects delete bob"]
+      mock_server.expect :call, nil, ["gcloud app services delete default"]
+      mock_server.expect :call, nil, [String]
 
-      server.stub :run_cmd, mock_server do
-        server.delete "bob"
-        mock_server.verify
+      server.config.stub :metadata, gae do
+        server.stub :system, mock_server do
+          server.delete
+          mock_server.verify
+        end
+      end
+    end
+
+    it "calls kubectl for gke" do
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      name = GCG::Deployer::IMAGE_NAME
+      mock.expect :call, nil, ["kubectl delete service #{name}"]
+      mock.expect :call, nil, ["kubectl delete deployment #{name}"]
+      mock.expect :call, nil, ["gcloud container clusters delete test -z test"]
+      mock.expect :call, nil, [String]
+
+      server.config.stub :metadata, gke do
+        server.stub :user_input, "test" do
+          server.stub :system, mock do
+            server.delete
+            mock.verify
+          end
+        end
       end
     end
   end

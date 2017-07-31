@@ -83,7 +83,7 @@ module Google
         method_option :platform, type: :string, aliases: "-p", default: "gae",
           desc: "The platform to deploy the gemserver to (gae or gke)"
         def prepare
-          Project.new(options[:use_proj], options[:platform]).create
+          Project.new(options[:use_proj]).create options[:platform]
           CloudSQL.new(options[:use_inst]).run
         end
 
@@ -93,20 +93,24 @@ module Google
         desc "update", "Redeploys the gemserver with the current config file" \
           " and google-cloud-gemserver gem version (a deploy must have " \
           "succeeded for 'update' to work."
+        method_option :use_proj, type: :string, aliases: "-g", desc:
+          "The project / service to update."
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to update the gemserver on (gae or gke)"
         def update
-          Server.new.update
+          Project.new.send :update_metadata, options[:platform]
+          Server.new.update options[:use_proj]
         end
 
         ##
-        # Deletes a given gemserver provided by the --use-proj option.
-        # This deletes the Google Cloud Platform project, all associated
-        # Cloud SQL instances, and all Cloud Storage buckets.
-        desc "delete", "Delete a given gemserver"
-        method_option :use_proj, type: :string, aliases: "-g", desc:
-        "Project id of GCP project the gemserver was deployed to. Warning:"\
-         " parent project and CloudSQL instance will also be deleted"
+        # Deletes a gemserver. This deletes the Google Cloud Platform project,
+        # all associated Cloud SQL instances, and all Cloud Storage buckets.
+        desc "delete", "Deletes a gemserver and its resources"
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to delete the gemserver on (gae or gke)"
         def delete
-          Server.new.delete #TODO
+          Project.new.send :update_metadata, options[:platform]
+          Server.new.delete
         end
 
         ##

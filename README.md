@@ -1,6 +1,6 @@
 # Google::Cloud::Gemserver
 
-[![Build Status](https://travis-ci.org/GoogleCloudPlatform/google-cloud-gemserver.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/google-cloud-ruby)
+[![Build Status](https://travis-ci.org/GoogleCloudPlatform/google-cloud-gemserver.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/google-cloud-gemserver)
 
 This gem is a tool that lets you manage, interact with, and deploy a [private gem
 server](https://github.com/bundler/gemstash) to a Google Cloud Platform project.
@@ -51,6 +51,9 @@ otherwise a new instance will be created.
 5) You will be prompted to enter the name of the
 Google Container Engine cluster to deploy to. If you do not have an existing
 one, a new one will be created.
+6) Once the command finishes running, run `kubectl get services` and look for
+the service with "gcg" as its prefix. The external IP for that service is the
+endpoint you can use to push/download gems from the gemserver.
 
 ### Gemserver on Google App Engine Workflow
   1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the CLoud SQL SLA coverage.
@@ -60,6 +63,11 @@ one, a new one will be created.
   5) Push private gems to the gemserver as described [below](#pushing-gems).
   6) Download private gems by modifying your Gemfile as described
   [below](#fetching-gems).
+
+
+One way to check your gemserver deployment was successful is to hit the /health
+endpoint, e.g. gemserver.com/health. This displays the status of the database
+and the heartbeat of the gemserver.
 
 ### Pushing gems
   Note: ensure `my-key` has the read permission and is added in your gem
@@ -93,7 +101,7 @@ one, a new one will be created.
   version number is changed, however.
 
 
-### Gemserver commands
+### Gemserver commands (update - TODO_
   * `google-cloud-gemserver config`
 
     Usage:

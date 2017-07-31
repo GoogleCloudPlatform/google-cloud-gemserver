@@ -63,8 +63,7 @@ module Google
             set_project
             puts "Project Information:"
             if @config.metadata[:platform] == "gke"
-              service_name = Google::Cloud::Gemserver::Deployer::IMAGE_NAME
-              system "kubectl describe service #{service_name}"
+              system "kubectl describe services"
             else
               puts run_cmd("gcloud app describe").gsub("\n", "\n\t").prepend "\t"
             end

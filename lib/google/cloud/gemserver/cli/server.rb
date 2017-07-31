@@ -81,15 +81,16 @@ module Google
           ##
           # Updates the gemserver on a Google Cloud Platform project by
           # redeploying it.
-          def update
+          #
+          # @param [String] project The name of the project to update. Optional
+          def update project = nil
             puts "Updating gemserver..."
             if @config.metadata[:platform] == "gke"
-              deployer = Google::Cloud::Gemserver::Deployer.new
-              deploy_file = "#{Configuration::SERVER_PATH}/deployment.yaml"
-              deployer.build_docker_image Configuration::SERVER_PATH do |location|
-                deployer.push_docker_image location do
-                  system "kubectl apply -f #{deploy_file}"
-                end
+              begin
+                prepare_dir
+                Google::Cloud::Gemserver::Deployer.new.update_gke_deploy
+              ensure
+                #cleanup
               end
             else
               deploy

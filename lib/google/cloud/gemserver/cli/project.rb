@@ -41,22 +41,23 @@ module Google
           ##
           # Initializes the project name, Configuration object and platform
           # metadata.
-          def initialize name = nil, platform = "gae"
+          #
+          # @param [String] name The name of the project on Google Cloud
+          # Platform.
+          def initialize name = nil
             @proj_name = name
             @config = Configuration.new
-
-            service = platform == "gke" ? "gke" : "gae"
-            @config.write_metadata platform: service
           end
 
           ##
           # Fetches a reference to the given project on Google Cloud Platform
           # and prompts the user to configure it correctly.
-          def create
+          def create platform = "gae"
             raise "Project name was not provided!" unless @proj_name
             begin
               system "gcloud config set project #{@proj_name}"
               @config.update_config @proj_name, :proj_id
+              update_metadata platform
               create_gae_project
               enable_api
               enable_billing
@@ -75,10 +76,17 @@ module Google
           private
 
           ##
+          # @private Updates the platform field in the gemserver metadata file.
+          def update_metadata platform = "gae"
+            service = platform == "gke" ? "gke" : "gae"
+            @config.write_metadata platform: service
+          end
+
+          ##
           # @private Checks if the current Google Cloud Platform project
           # contains a Google App Engine project. If not, one is created.
           def create_gae_project
-            return if project_exists?
+            return if @config.metadata[:platform] == "gke" || project_exists?
             puts "Required Google App Engine project does not exist."
             system "gcloud app create"
           end
