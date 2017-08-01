@@ -13,6 +13,7 @@
 # limitations under the License.
 
 require "google/cloud/gemserver"
+require "json"
 
 module Google
   module Cloud
@@ -91,10 +92,11 @@ module Google
         #
         # @return [String]
         def curr_user
-          raw = run_cmd "gcloud auth list"
-          active_idx = raw.index("*")
-          abort "You are not authenticated with gcloud" unless active_idx
-          raw[active_idx + 1 .. raw.index("\n", active_idx)].strip
+          raw = run_cmd "gcloud auth list --format json"
+          JSON.load(raw).map do |i|
+            return i["account"] if i["status"] == "ACTIVE"
+          end
+          abort "You are not authenticated with gcloud"
         end
 
         ##

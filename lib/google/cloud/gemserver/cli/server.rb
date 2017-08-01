@@ -70,9 +70,10 @@ module Google
               puts "Beginning gemserver deployment..."
               path = Configuration::SERVER_PATH
               status = system "gcloud app deploy #{path}/app.yaml -q"
+              fail "Gemserver deployment failed. " unless status
               @config.save_to_cloud
               setup_default_keys
-              display_next_steps if status
+              display_next_steps
             ensure
               cleanup
             end
@@ -82,10 +83,7 @@ module Google
           # Updates the gemserver on a Google Cloud Platform project by
           # redeploying it.
           def update
-            was_deployed = user_input "Has the gemserver been deployed" \
-              "before with the current settings (y or n)? If not, run " \
-              "`google-cloud-gemserver create` first."
-            return unless was_deployed.downcase == "y"
+            return unless Configuration.deployed?
             puts "Updating gemserver..."
             deploy
           end
@@ -97,6 +95,7 @@ module Google
           # was deployed to.
           def delete proj_id
             puts "Deleting gemserver with parent project"
+            Configuration.new.delete_from_cloud
             run_cmd "gcloud projects delete #{proj_id}"
           end
 
