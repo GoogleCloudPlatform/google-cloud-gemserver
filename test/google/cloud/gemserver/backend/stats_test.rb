@@ -28,11 +28,9 @@ describe Google::Cloud::Gemserver::Backend::Stats do
       ENV["APP_ENV"] = "dev"
       stats = GCG::Backend::Stats.new
       mock = Minitest::Mock.new
-      mock.expect :call, "", ["gcloud app describe"]
-      stats.stub :set_project, nil do
-        stats.stub :run_cmd, mock do
-          stats.log_app_description
-        end
+      mock.expect :call, "", ["gcloud app describe --project #{stats.proj}"]
+      stats.stub :run_cmd, mock do
+        stats.log_app_description
       end
       mock.verify
       ENV["APP_ENV"] = "test"

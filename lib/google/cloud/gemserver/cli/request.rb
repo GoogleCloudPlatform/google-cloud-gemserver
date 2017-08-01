@@ -38,8 +38,13 @@ module Google
           ##
           # Initialize the Backend object by constructing an HTTP object for the
           # gemserver.
-          def initialize url = nil
-            gemserver_url = url.nil? == true ? remote : url
+          #
+          # @param [String] url The URL of the gemserver. Optional.
+          #
+          # @param [String] proj_name The name of the Google Cloud Platform the
+          # gemserver was deployed to. Optional.
+          def initialize url = nil, proj_name = nil
+            gemserver_url = url.nil? == true ? remote(proj_name) : url
             @http = Net::HTTP.new gemserver_url
           end
 
@@ -76,8 +81,15 @@ module Google
 
           private
 
-          def remote
-            descrip = YAML.load(`gcloud app describe`)
+          ##
+          # @private The URL of the gemserver.
+          #
+          # @param [String] proj_name The Google Cloud Platform project the
+          # gemserver was deployed to.
+          #
+          # @return [String]
+          def remote proj_name
+            descrip = YAML.load(`gcloud app describe --project #{proj_name}`)
             descrip["defaultHostname"]
           end
 

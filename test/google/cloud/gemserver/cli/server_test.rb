@@ -45,7 +45,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
       app_path = "#{GCG::Configuration::SERVER_PATH}/app.yaml"
       ENV["APP_ENV"] = "production"
       mock_server = Minitest::Mock.new
-      mock_server.expect :call, true, ["gcloud app deploy #{app_path} -q"]
+      mock_server.expect :call, nil, ["gcloud app deploy #{app_path} -q --project #{server.config[:proj_id]}"]
 
       server.stub :system, mock_server do
         server.stub :prepare_dir, nil do

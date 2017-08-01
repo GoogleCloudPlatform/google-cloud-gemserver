@@ -75,7 +75,7 @@ describe Google::Cloud::Gemserver do
   end
 
   it "can get gemserver stats" do
-    out = `google-cloud-gemserver stats`
+    out = `google-cloud-gemserver stats -r #{HOST}`
     assert out.include?("Project Information")
     assert out.include?("Private Gems")
     assert out.include?("Cached Gem Dependencies")
@@ -83,24 +83,24 @@ describe Google::Cloud::Gemserver do
 
   it "can create a gemserver key" do
     # response format => Generated key: KEY
-    out = `google-cloud-gemserver create_key`
+    out = `google-cloud-gemserver create_key -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete_key -k #{out[range]}`
-    out = `google-cloud-gemserver create_key -p both`
+    `google-cloud-gemserver delete_key -k #{out[range]} -r #{HOST}`
+    out = `google-cloud-gemserver create_key -p both -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete_key -k #{out[range]}`
-    out = `google-cloud-gemserver create_key -p write`
+    `google-cloud-gemserver delete_key -k #{out[range]} -r #{HOST}`
+    out = `google-cloud-gemserver create_key -p write -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete_key -k #{out[range]}`
-    out = `google-cloud-gemserver create_key -p read`
+    `google-cloud-gemserver delete_key -k #{out[range]} -r #{HOST}`
+    out = `google-cloud-gemserver create_key -p read -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete_key -k #{out[range]}`
+    `google-cloud-gemserver delete_key -k #{out[range]} -r #{HOST}`
   end
 
   it "can delete a gemserver key" do
-    raw = `google-cloud-gemserver create_key`
+    raw = `google-cloud-gemserver create_key -r #{HOST}`
     refute raw.include? "Internal server error"
-    out = `google-cloud-gemserver delete_key -k #{raw[range]}`
+    out = `google-cloud-gemserver delete_key -k #{raw[range]} -r #{HOST}`
     assert out.include?("success")
   end
 end

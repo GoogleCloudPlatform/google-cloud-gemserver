@@ -68,8 +68,9 @@ module Google
               return start if ["test", "dev"].include? ENV["APP_ENV"]
               prepare_dir
               puts "Beginning gemserver deployment..."
-              path = Configuration::SERVER_PATH
-              status = system "gcloud app deploy #{path}/app.yaml -q"
+              path = "#{Configuration::SERVER_PATH}/app.yaml"
+              flags = "-q --project #{@config[:proj_id]}"
+              status = system "gcloud app deploy #{path} #{flags}"
               fail "Gemserver deployment failed. " unless status
               @config.save_to_cloud
               setup_default_keys
@@ -169,7 +170,8 @@ module Google
           #
           # @return [String]
           def remote
-            descrip = YAML.load(run_cmd "gcloud app describe")
+            flag = "--project #{@config[:proj_id]}"
+            descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
             descrip["defaultHostname"]
           end
 

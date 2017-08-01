@@ -87,7 +87,6 @@ module Google
           # Prepares a Cloud SQL instance with a database and user. Also saves
           # the database settings in the appropriate configuration file.
           def run
-            prepare
             create_instance do |instance_op|
               run_sql_task instance_op if instance_op.class == SQL::Operation
               update_root_user
@@ -100,12 +99,6 @@ module Google
           end
 
           private
-
-          ##
-          # @private Sets the gcloud project.
-          def prepare
-            `gcloud config set project #{@proj_id}`
-          end
 
           ##
           # @private Creates a Cloud SQL instance.
@@ -148,7 +141,7 @@ module Google
           def update_root_user
             return if @custom
             cmd = "gcloud sql users set-password root % --password #{@pwd} "\
-              "-i #{@inst}"
+              "-i #{@inst} --project #{@proj_id}"
             `#{cmd}`
           end
 
