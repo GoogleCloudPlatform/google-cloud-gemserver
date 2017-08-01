@@ -70,9 +70,11 @@ module Google
               puts "Beginning gemserver deployment..."
               path = "#{Configuration::SERVER_PATH}/app.yaml"
               flags = "-q --project #{@config[:proj_id]}"
-              run_cmd "gcloud app deploy #{path} #{flags}"
+              status = system "gcloud app deploy #{path} #{flags}"
+              fail "Gemserver deployment failed. " unless status
               @config.save_to_cloud
               setup_default_keys
+              display_next_steps
             ensure
               cleanup
             end
@@ -82,6 +84,7 @@ module Google
           # Updates the gemserver on a Google Cloud Platform project by
           # redeploying it.
           def update
+            return unless Configuration.deployed?
             puts "Updating gemserver..."
             deploy
           end
@@ -93,6 +96,7 @@ module Google
           # was deployed to.
           def delete proj_id
             puts "Deleting gemserver with parent project"
+            @config.delete_from_cloud
             run_cmd "gcloud projects delete #{proj_id}"
           end
 
@@ -147,6 +151,18 @@ module Google
           def sanitize_name name
             name = name.chomp
             name.gsub(/[^0-9a-z ]/i, "")
+          end
+
+          ##
+          # @private Outputs helpful information to the console indicating the
+          # URL the gemserver is running at and how to use the gemserver.
+          def display_next_steps
+            puts "The gemserver has been deployed! It is running on #{remote}"
+            puts "To see how to use your gemserver to push and download gems" \
+              "read https://github.com/GoogleCloudPlatform/google-cloud-" \
+              "gemserver/blob/master/docs/usage_example.md for some examples."
+            puts "For general information, visit https://github.com/" \
+              "GoogleCloudPlatform/google-cloud-gemserver/blob/master/README.md"
           end
 
           ##
