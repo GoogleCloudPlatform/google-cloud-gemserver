@@ -68,9 +68,11 @@ module Google
               return start if ["test", "dev"].include? ENV["APP_ENV"]
               prepare_dir
               puts "Beginning gemserver deployment..."
-              run_cmd "gcloud app deploy #{Configuration::SERVER_PATH}/app.yaml -q"
+              path = Configuration::SERVER_PATH
+              status = system "gcloud app deploy #{path}/app.yaml -q"
               @config.save_to_cloud
               setup_default_keys
+              display_next_steps if status
             ensure
               cleanup
             end
@@ -80,6 +82,10 @@ module Google
           # Updates the gemserver on a Google Cloud Platform project by
           # redeploying it.
           def update
+            was_deployed = user_input "Has the gemserver been deployed" \
+              "before with the current settings (y or n)? If not, run " \
+              "`google-cloud-gemserver create` first."
+            return unless was_deployed.downcase == "n"
             puts "Updating gemserver..."
             deploy
           end
@@ -145,6 +151,18 @@ module Google
           def sanitize_name name
             name = name.chomp
             name.gsub(/[^0-9a-z ]/i, "")
+          end
+
+          ##
+          # @private Outputs helpful information to the console indicating the
+          # URL the gemserver is running at and how to use the gemserver.
+          def display_next_steps
+            puts "The gemserver has been deployed! It is running on #{remote}"
+            puts "To see how to use your gemserver to push and download gems" \
+              "read https://github.com/GoogleCloudPlatform/google-cloud-" \
+              "gemserver/blob/master/docs/usage_example.md for some examples."
+            puts "For general information, visit https://github.com/" \
+              "GoogleCloudPlatform/google-cloud-gemserver/blob/master/README.md"
           end
 
           ##

@@ -9,7 +9,7 @@ In doing it, it creates a Cloud SQL instance. If you wish to use an existing
 Cloud SQL instance run `google-cloud-gemserver create --use-proj [PROJECT_ID]
 --use-inst [CLOUD_SQL INSTANCE NAME]`
 
-** If you do not want to deploy to GCP and instead want to use the Cloud SQL
+Note: If you do not want to deploy to GCP and instead want to use the Cloud SQL
 instance in dev_config.yml or sqlite3 database to run the gemserver completely
 locally then prepend "APP_ENV=dev" or "APP_ENV=test" to google-cloud-gemserver
 commands, accordingly. Read [running locally](running-locally.md) for more
@@ -24,9 +24,9 @@ To push a gem, simply run `gem push --key [key] [path-to-gem] --host
 
 Here is an example:
 
-** assume you have deployed a gemserver to a project called my-gemserver. This
+* assume you have deployed a gemserver to a project called my-gemserver. This
   project has the following url: http://my-gemserver.appspot.com
-** assume you created a key with read and write permissions called my-key (read
+* assume you created a key with read and write permissions called my-key (read
   more about key [here](key.md) for more information)
 
 1) Create a new gem with `bundle gem private-gem`
@@ -43,7 +43,7 @@ will fail.
 
 ## Installing Gems
 
-** same assumptions as above
+Note: same assumptions as above
 
 1) Add `source "http://my-gemserver.appspot.com" to the top of your Gemfile.
 This lets the gemserver fetch private gem dependencies from rubygems.org if they

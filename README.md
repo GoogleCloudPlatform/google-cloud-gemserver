@@ -113,8 +113,8 @@ Or install it yourself as:
       google-cloud-gemserver delete_key
 
     Options:
-      -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
-      -k, [--key=KEY]                  # The key to delete
+    *  -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
+    *  -k, [--key=KEY]                  # The key to delete
 
       Deletes a given key
 
