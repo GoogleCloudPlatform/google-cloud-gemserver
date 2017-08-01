@@ -91,6 +91,7 @@ module Google
           #
           # @return [String]
           def prompt_user
+            puts "\nPress enter to continue..."
             STDIN.gets
           end
 
@@ -109,19 +110,18 @@ module Google
           #
           # @return [String]
           def enable_api
-            puts "Enable the Google Cloud SQL API if it is not already "\
-              "enabled by visiting: https://console.developers.google.com"\
-              "/apis/api/sqladmin.googleapis.com/overview?project=#{@proj_name}"\
-              " and clicking \"Enable\""
-            puts "Enable the Google Cloud Resource manager API if it is not already "\
-              "enabled by visiting: https://console.developers.google.com"\
-              "/apis/api/cloudresourcemanager.googleapis.com/overview?project=#{@proj_name}"\
-              " and clicking \"Enable\""
-            puts "Enable the Google App Engine Admin API if it is not already "\
-              "enabled by visiting: https://console.developers.google.com"\
-              "/apis/api/appengine.googleapis.com/overview?project=#{@proj_name}"\
-              " and clicking \"Enable\""
-            puts "Press Enter after enabling the APIs to continue"
+            puts "\nEnable the Google Cloud SQL API if it is not already "\
+              "enabled by visiting:\n https://console.developers.google.com"\
+              "/apis/api/sqladmin.googleapis.com/overview?"\
+              "project=#{@proj_name} and clicking \"Enable\""
+            puts "\nEnable the Google Cloud Resource manager API if it is not"\
+              "already enabled by visiting:\nhttps://console.developers.google"\
+              ".com/apis/api/cloudresourcemanager.googleapis.com/overview?"\
+              "project=#{@proj_name} and clicking \"Enable\""
+            puts "\nEnable the Google App Engine Admin API if it is not "\
+              "already enabled by visiting:\nhttps://console.developers.google"\
+              ".com/apis/api/appengine.googleapis.com/overview?"\
+              "project=#{@proj_name} and clicking \"Enable\""
             prompt_user
           end
 
@@ -131,10 +131,9 @@ module Google
           #
           # @return [String]
           def enable_billing
-            puts "Enable billing for the project you just created by "\
-              "visiting the Google Cloud Platform console and selecting "\
-              "your new project."
-            puts "Press Enter after doing so to continue"
+            puts "\nEnable billing for the project you just created by "\
+              "visiting: \nconsole.cloud.google.com/billing?project="\
+              "#{@proj_name}\nand setting up a billing account."
             prompt_user
           end
         end
