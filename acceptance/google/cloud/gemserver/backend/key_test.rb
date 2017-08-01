@@ -15,6 +15,7 @@
 require "helper"
 require "fileutils"
 require "yaml"
+require "gemstash"
 
 describe Google::Cloud::Gemserver::Backend::Key do
 

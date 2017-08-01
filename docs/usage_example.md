@@ -2,8 +2,7 @@
 
 ## Deployment
 1) Install the gem with `gem install google-cloud-gemserver`
-2) Create a [Google Cloud Platform](https://console.cloud.google.com) and ensure billing is enabled
-3) Deploy the gemserver by running `production google-cloud-gemserver create --use-proj
+2) Deploy the gemserver by running `production google-cloud-gemserver create --use-proj
 [PROJECT_ID]`. This deploys the gemserver as a Google App Engine project to GCP.
 In doing it, it creates a Cloud SQL instance. If you wish to use an existing
 Cloud SQL instance run `google-cloud-gemserver create --use-proj [PROJECT_ID]

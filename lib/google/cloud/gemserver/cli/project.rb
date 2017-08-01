@@ -51,7 +51,6 @@ module Google
           def create
             raise "Project name was not provided!" unless @proj_name
             begin
-              system "gcloud config set project #{@proj_name}"
               @config.update_config @proj_name, :proj_id
               create_gae_project
               enable_api
@@ -76,7 +75,7 @@ module Google
           def create_gae_project
             return if project_exists?
             puts "Required Google App Engine project does not exist."
-            system "gcloud app create"
+            system "gcloud app create --project #{@proj_name}"
           end
 
           ##
@@ -84,7 +83,7 @@ module Google
           #
           # @return [Boolean]
           def project_exists?
-            system "gcloud app describe > /dev/null 2>&1"
+            system "gcloud app describe --project #{@proj_name} >/dev/null 2>&1"
           end
 
           ##
