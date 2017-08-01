@@ -85,7 +85,7 @@ module Google
             was_deployed = user_input "Has the gemserver been deployed" \
               "before with the current settings (y or n)? If not, run " \
               "`google-cloud-gemserver create` first."
-            return unless was_deployed.downcase == "n"
+            return unless was_deployed.downcase == "y"
             puts "Updating gemserver..."
             deploy
           end
