@@ -88,15 +88,15 @@ describe Google::Cloud::Gemserver do
 
   it "can create a gemserver key" do
     Benchmark.bm(7) do |x|
-      x.report("create_key: "){ `google-cloud-gemserver create_key` }
+      x.report("create_key: "){ `google-cloud-gemserver create_key -r #{HOST}` }
     end
   end
 
   it "can delete a gemserver key" do
-    raw = `google-cloud-gemserver create_key`
+    raw = `google-cloud-gemserver create_key -r #{HOST}`
     key = raw[range]
     Benchmark.bm(7) do |x|
-      x.report("delete_key: "){ `google-cloud-gemserver delete_key -k #{key}` }
+      x.report("delete_key: "){ `google-cloud-gemserver delete_key -k #{key} -r #{HOST}` }
     end
   end
 end

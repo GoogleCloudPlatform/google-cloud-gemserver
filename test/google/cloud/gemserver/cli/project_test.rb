@@ -44,8 +44,7 @@ describe Google::Cloud::Gemserver::CLI::Project do
     it "creates an App Engine project if it does not exist" do
       project = GCG::CLI::Project.new "test"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, ["gcloud config set project test"]
-      mock.expect :call, nil, ["gcloud app create"]
+      mock.expect :call, nil, ["gcloud app create --project test"]
 
       project.stub :project, nil do
         project.stub :prompt_user, nil do
