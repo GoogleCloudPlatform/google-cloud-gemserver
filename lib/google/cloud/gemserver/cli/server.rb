@@ -96,7 +96,7 @@ module Google
           # was deployed to.
           def delete proj_id
             puts "Deleting gemserver with parent project"
-            Configuration.new.delete_from_cloud
+            @config.delete_from_cloud
             run_cmd "gcloud projects delete #{proj_id}"
           end
 

@@ -88,9 +88,11 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock_server.expect :call, nil, ["gcloud projects delete bob"]
 
       GCG::Configuration.stub :new, config_mock do
-        server.stub :run_cmd, mock_server do
-          server.delete "bob"
-          mock_server.verify
+        server.config.stub :delete_from_cloud, nil do
+          server.stub :run_cmd, mock_server do
+            server.delete "bob"
+            mock_server.verify
+          end
         end
       end
     end
