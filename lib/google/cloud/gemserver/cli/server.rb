@@ -106,11 +106,15 @@ module Google
           # @private Creates a key with all permissions and sets it in the
           # necessary configurations (gem credentials and bundle config).
           def setup_default_keys
-            puts "Would you like to setup a default key? [Y/n] (default yes)"
-            should_create = user_input
+            should_create = user_input("Would you like to setup a default " \
+              "key? [Y/n] (default yes)")
             return if should_create.downcase == "n"
             gemserver_url = remote
-            key = extract_key(Request.new(gemserver_url).create_key)
+            res = Request.new(gemserver_url).create_key
+            abort "Error generating key" unless res.code.to_i == 200
+            key = Backend::Key.send :parse_key, res.body
+            abort "Invalid key" unless valid_key? key
+            puts "Generated key: #{key}"
             set_bundle key, gemserver_url
             set_gem_credentials key
           end
@@ -132,25 +136,46 @@ module Google
           #
           # @param [String] key The key to be added to the credentials.
           def set_gem_credentials key
-            puts "Updating bundle config. Enter a name for your key (default "\
-              "is \"master-gemserver-key\""
-            key_name = sanitize_name(user_input)
+            key_name = sanitize_name(user_input("Updating bundle config. Enter"\
+              "a name for your key (default is \"master-gemserver-key\""))
             key_name = key_name.empty? == true ? Configuration::DEFAULT_KEY_NAME : key_name
             puts "Updating #{Configuration::CREDS_PATH}"
+
             FileUtils.touch Configuration::CREDS_PATH
-            run_cmd "echo \":#{key_name}: #{key}\" >> #{Configuration::CREDS_PATH}"
+            keys = YAML.load_file(Configuration::CREDS_PATH) || {}
+
+            if keys[key_name.to_sym].nil?
+              system "echo \":#{key_name}: #{key}\" >> #{Configuration::CREDS_PATH}"
+            else
+              puts "The key name \"#{key_name}\" already exists. Please update"\
+                " #{Configuration::CREDS_PATH} manually to replace the key or" \
+                " manually enter a different name into the file for your key:" \
+                " #{key}."
+            end
+          end
+
+          ##
+          # @private Checks if a key is valid by its length and value.
+          #
+          # @param [String] key The key to be validated.
+          #
+          # @return [Boolean]
+          def valid_key? key
+            size = key.size == Backend::Key::KEY_LENGTH
+            m_size = key.gsub(/[^0-9a-z]/i, "").size == Backend::Key::KEY_LENGTH
+            size && m_size
           end
 
           ##
           # @private Sanitizes a name by removing special symbols and ensuring
-          # it is alphanumeric.
+          # it is alphanumeric (and hyphens, underscores).
           #
           # @param [String] name The name to be sanitized.
           #
           # @return [String]
           def sanitize_name name
             name = name.chomp
-            name.gsub(/[^0-9a-z ]/i, "")
+            name.gsub(/[^0-9a-z\-\_]/i, "")
           end
 
           ##
@@ -173,17 +198,6 @@ module Google
             flag = "--project #{@config[:proj_id]}"
             descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
             descrip["defaultHostname"]
-          end
-
-          ##
-          # @private Extracts the key from the response.
-          #
-          # @param [String] response The response the key is extracted from.
-          #
-          # @return [String]
-          def extract_key response
-            idx = response.index ":"
-            response[idx + 1 .. response.size - 1].chomp
           end
 
           ##
@@ -249,10 +263,13 @@ module Google
           end
 
           ##
-          # @private Gets input from the user.
+          # @private Gets input from the user after displaying a message.
+          #
+          # @param [String] msg The message to be displayed.
           #
           # @return [String]
-          def user_input
+          def user_input msg
+            puts msg
             STDIN.gets.chomp
           end
         end

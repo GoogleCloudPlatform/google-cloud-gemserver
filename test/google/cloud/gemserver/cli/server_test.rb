@@ -40,6 +40,28 @@ describe Google::Cloud::Gemserver::CLI::Server do
   end
 
   describe ".deploy" do
+    it "calls prepare_dir" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :system, true do
+        server.config.stub :save_to_cloud, nil do
+          server.stub :setup_default_keys, nil do
+            server.stub :display_next_steps, nil do
+              server.stub :prepare_dir, mock do
+                server.deploy
+                mock.verify
+              end
+            end
+          end
+        end
+      end
+
+      ENV["APP_ENV"] = "test"
+    end
+
     it "calls gcloud app deploy" do
       server = GCG::CLI::Server.new
       app_path = "#{GCG::Configuration::SERVER_PATH}/app.yaml"
@@ -60,6 +82,68 @@ describe Google::Cloud::Gemserver::CLI::Server do
         end
       end
       ENV["APP_ENV"] = "test"
+    end
+
+    it "saves the deploy config file to GCS" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :system, true do
+          server.stub :setup_default_keys, nil do
+            server.stub :display_next_steps, nil do
+              server.config.stub :save_to_cloud, mock do
+                server.deploy
+                mock.verify
+              end
+            end
+          end
+        end
+      end
+
+      ENV["APP_ENV"] = "test"
+    end
+
+    it "calls setup_default_keys" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :system, true do
+          server.config.stub :save_to_cloud, nil do
+            server.stub :display_next_steps, nil do
+              server.stub :setup_default_keys, mock do
+                server.deploy
+                mock.verify
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "calls display_next_steps" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :system, true do
+          server.config.stub :save_to_cloud, nil do
+            server.stub :setup_default_keys, nil do
+              server.stub :display_next_steps, mock do
+                server.deploy
+                mock.verify
+              end
+            end
+          end
+        end
+      end
     end
   end
 

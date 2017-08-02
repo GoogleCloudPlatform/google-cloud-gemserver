@@ -110,7 +110,7 @@ module Google
             if type != Net::HTTP::Get
               req.set_form_data(params) if params
             end
-            (@http.request req).body
+            @http.request req
           end
         end
       end
