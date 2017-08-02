@@ -111,8 +111,8 @@ module Google
             return if should_create.downcase == "n"
             gemserver_url = remote
             res = Request.new(gemserver_url).create_key
-            abort "Error generating key" if res.include? "Internal Server Error"
-            key = Backend::Key.send :parse_key, res
+            abort "Error generating key" unless res.code.to_i == 200
+            key = Backend::Key.send :parse_key, res.body
             abort "Invalid key" unless valid_key? key
             puts "Generated key: #{key}"
             set_bundle key, gemserver_url
@@ -140,10 +140,18 @@ module Google
               "a name for your key (default is \"master-gemserver-key\""))
             key_name = key_name.empty? == true ? Configuration::DEFAULT_KEY_NAME : key_name
             puts "Updating #{Configuration::CREDS_PATH}"
+
             FileUtils.touch Configuration::CREDS_PATH
             keys = YAML.load_file(Configuration::CREDS_PATH) || {}
-            keys[key_name.to_sym] = key
-            File.open(Configuration::CREDS_PATH, 'w') { |f| YAML.dump keys, f }
+
+            if keys[key_name.to_sym].nil?
+              system "echo \":#{key_name}: #{key}\" >> #{Configuration::CREDS_PATH}"
+            else
+              puts "The key name \"#{key_name}\" already exists. Please update"\
+                " #{Configuration::CREDS_PATH} manually to replace the key or" \
+                " manually enter a different name into the file for your key:" \
+                " #{key}."
+            end
           end
 
           ##

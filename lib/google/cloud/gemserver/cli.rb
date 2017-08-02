@@ -121,7 +121,7 @@ module Google
             return Backend::Key.create_key(options[:permissions])
           end
           if Authentication.new.can_modify?
-            puts Request.new(options[:remote], options[:use_proj]).create_key options[:permissions]
+            puts Request.new(options[:remote], options[:use_proj]).create_key(options[:permissions]).body
             Backend::Key.output_key_info
           else
             puts "You are either not authenticated with gcloud or lack" \
@@ -144,7 +144,7 @@ module Google
             return Backend::Key.delete_key(options[:key])
           end
           if Authentication.new.can_modify?
-            puts Request.new(options[:remote], options[:use_proj]).delete_key options[:key]
+            puts Request.new(options[:remote], options[:use_proj]).delete_key(options[:key]).body
           else
             puts "You are either not authenticated with gcloud or lack" \
               " access to the gemserver and cannot delete a key."
@@ -170,7 +170,7 @@ module Google
         def stats
           return Backend::Stats.new.run if ENV["APP_ENV"] == "test"
           Backend::Stats.new.log_app_description
-          puts Request.new(options[:remote], options[:use_proj]).stats
+          puts Request.new(options[:remote], options[:use_proj]).stats.body
         end
 
         desc "gen_config", "Generates configuration files with default" \
