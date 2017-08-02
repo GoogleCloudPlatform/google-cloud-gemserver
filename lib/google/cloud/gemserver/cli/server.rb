@@ -209,6 +209,7 @@ module Google
                 r = Request.new(nil, @config[:proj_id]).health
                 break if r.code.to_i == 200
               end
+              sleep 5
             end
           end
 

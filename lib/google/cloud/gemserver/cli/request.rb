@@ -54,6 +54,8 @@ module Google
           #
           # @param [String] permissions The permissions the generated key will
           # have (read, write, or both). Optional.
+          #
+          # @return [Net::HTTPResponse]
           def create_key permissions = nil
             send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions}
           end
@@ -62,6 +64,8 @@ module Google
           # Send a request to the gemserver to delete a key.
           #
           # @param [String] key The key to delete.
+          #
+          # @return [Net::HTTPResponse]
           def delete_key key
             send_req Net::HTTP::Put, "/api/v1/key", {key: key}
           end
@@ -69,12 +73,16 @@ module Google
           ##
           # Send a request to the gemserver to fetch information about stored
           # private gems and cached gem dependencies.
+          #
+          # @return [Net::HTTPResponse]
           def stats
             send_req Net::HTTP::Get, "/api/v1/stats"
           end
 
           ##
           # Sends a request to the gemserver to ensure it is accessible.
+          #
+          # @return [Net::HTTPResponse]
           def health
             send_req Net::HTTP::Get, "/health"
           end
