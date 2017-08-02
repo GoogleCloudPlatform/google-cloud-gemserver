@@ -301,7 +301,7 @@ module Google
             puts "No configuration found. Was the gemserver deployed?"
             return
           end
-          prepare config
+          prepare GCS.get_file(GCS_PATH)
           puts "Gemserver is running with this configuration:"
           puts YAML.load_file(GCS_PATH).to_yaml
           cleanup
