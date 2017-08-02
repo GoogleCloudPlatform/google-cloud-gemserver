@@ -35,7 +35,7 @@ Or install it yourself as:
 
 ### Typical Workflow
   1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the Cloud SQL SLA coverage.
-  2) Generate a key (referred to as my-key) by running `google-cloud-gemserver create_key` for your gemserver. By default, this generates a key with both read and write permissions. For more information about keys, read [this](docs/key.md).
+  2) Generate a key (referred to as my-key) by running `google-cloud-gemserver create-key --use-proj YOUR_PROJECT_ID` for your gemserver. By default, this generates a key with both read and write permissions. For more information about keys, read [this](docs/key.md).
   3) Add this key to your bundle config by running `bundle config http://gemserver-url.com/private/ my-key` where gemserver-url is the same as your project's url, e.g. http://my-project.appspot.com/private/. This is necessary to download gems.
   4) Add this key to your gem credentials as my-key (in ~/.gem/credentials): `:my-key: [KEY]` This is necessary to push gems (if the key has write permission).
   5) Push private gems to the gemserver as described [below](#pushing-gems).
@@ -96,7 +96,7 @@ Or install it yourself as:
   * `google-cloud-gemserver create-key`
 
     Usage:
-      google-cloud-gemserver create_key
+      google-cloud-gemserver create-key
 
     Options:
     *  -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
@@ -107,10 +107,10 @@ Or install it yourself as:
 
       Creates an authentication key
 
-  * `google-cloud-gemserver delete_key`
+  * `google-cloud-gemserver delete-key`
 
     Usage:
-      google-cloud-gemserver delete_key
+      google-cloud-gemserver delete-key
 
     Options:
     *  -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
@@ -157,10 +157,10 @@ Or install it yourself as:
 
     Redeploys the gemserver with the current config file and google-cloud-gemserver gem version (a deploy must have succeeded for 'update' to work)
 
-  * `google-cloud-gemserver gen_config`
+  * `google-cloud-gemserver gen-config`
 
     Usage:
-      google-cloud-gemserver gen_config
+      google-cloud-gemserver gen-config
 
     Generates configuration files with default values
 
