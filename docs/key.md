@@ -18,7 +18,7 @@ There are 3 permission settings for a key:
 * both (read and write)
 
 To create a key with a desired permission, run:
-`google-cloud-gemserver create-key --permissions [read|write|both] --use-proj PROJECT_ID`. By default, if the permissions argument is not given a key will be generated with both (read, write) permissions.
+`google-cloud-gemserver create-key --use-proj PROJECT_ID [--permissions read|write|both]`. By default, if the permissions argument is not given a key will be generated with both (read, write) permissions.
 
 Note: the `create-key` command requires either the `--use-proj PROJECT_ID` flag
 or the `--remote your-gemserver-url` flag, i.e. `--use-proj my-project` or `--remote
