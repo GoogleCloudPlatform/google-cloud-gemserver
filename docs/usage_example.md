@@ -34,7 +34,7 @@ arbitrary endpoints by removing the `spec.respond_to?` conditional.
 3) Build the gem with `rake build`. This created a .gem file in pkg/ that we
 will push to the gemserver.
 4) Create a key (referred to as my-key) for your gemserver if you have not
-already by running `google-cloud-gemserver create_key`.
+already by running `google-cloud-gemserver create-key --use-proj PROJECT_ID`.
 5) Push the gem to your gemserver: `gem push --key my-key
 pkg/private-gem-0.1.0.gem --host http://my-gemserver.appspot.com/private`
 Note the url has /private at the end; this is important otherwise pushing gems
