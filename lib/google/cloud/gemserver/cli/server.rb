@@ -72,6 +72,7 @@ module Google
               flags = "-q --project #{@config[:proj_id]}"
               status = system "gcloud app deploy #{path} #{flags}"
               fail "Gemserver deployment failed. " unless status
+              wait_until_server_accessible
               @config.save_to_cloud
               setup_default_keys
               display_next_steps
@@ -137,7 +138,7 @@ module Google
           # @param [String] key The key to be added to the credentials.
           def set_gem_credentials key
             key_name = sanitize_name(user_input("Updating bundle config. Enter"\
-              "a name for your key (default is \"master-gemserver-key\""))
+              " a name for your key (default is \"master-gemserver-key\""))
             key_name = key_name.empty? == true ? Configuration::DEFAULT_KEY_NAME : key_name
             puts "Updating #{Configuration::CREDS_PATH}"
 
@@ -182,12 +183,34 @@ module Google
           # @private Outputs helpful information to the console indicating the
           # URL the gemserver is running at and how to use the gemserver.
           def display_next_steps
-            puts "The gemserver has been deployed! It is running on #{remote}"
-            puts "To see how to use your gemserver to push and download gems" \
-              "read https://github.com/GoogleCloudPlatform/google-cloud-" \
+            puts "\nThe gemserver has been deployed! It is running on #{remote}"
+            puts "To see the status of the gemserver, visit: \n" \
+              " #{remote}/health"
+            puts "\nTo see how to use your gemserver to push and download " \
+              "gems read https://github.com/GoogleCloudPlatform/google-cloud-" \
               "gemserver/blob/master/docs/usage_example.md for some examples."
-            puts "For general information, visit https://github.com/" \
+            puts "\nFor general information, visit https://github.com/" \
               "GoogleCloudPlatform/google-cloud-gemserver/blob/master/README.md"
+          end
+
+          ##
+          # @private Pings the gemserver until a timeout or the gemserver
+          # replies with a 200 response code.
+          #
+          # @param [Integer] timeout The length of time the gemserver is
+          # pinged. Optional.
+          def wait_until_server_accessible timeout = 60
+            puts "Waiting for the gemserver to be accessible..."
+            start_time = Time.now
+            loop do
+              if Time.now - start_time > timeout
+                fail "Could not establish a connection to the gemserver"
+              else
+                r = Request.new(nil, @config[:proj_id]).health
+                break if r.code.to_i == 200
+              end
+              sleep 5
+            end
           end
 
           ##

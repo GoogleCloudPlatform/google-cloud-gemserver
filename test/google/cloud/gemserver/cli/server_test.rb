@@ -51,8 +51,10 @@ describe Google::Cloud::Gemserver::CLI::Server do
           server.stub :setup_default_keys, nil do
             server.stub :display_next_steps, nil do
               server.stub :prepare_dir, mock do
-                server.deploy
-                mock.verify
+                server.stub :wait_until_server_accessible, nil do
+                  server.deploy
+                  mock.verify
+                end
               end
             end
           end
@@ -74,13 +76,39 @@ describe Google::Cloud::Gemserver::CLI::Server do
           server.config.stub :save_to_cloud, nil do
             server.stub :setup_default_keys, nil do
               server.stub :display_next_steps, nil do
-                server.deploy
-                mock_server.verify
+                server.stub :wait_until_server_accessible, nil do
+                  server.deploy
+                  mock_server.verify
+                end
               end
             end
           end
         end
       end
+      ENV["APP_ENV"] = "test"
+    end
+
+    it "waits for the gemserver to be accessible" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.config.stub :save_to_cloud, nil do
+          server.stub :system, true do
+            server.stub :setup_default_keys, nil do
+              server.stub :display_next_steps, nil do
+                server.stub :wait_until_server_accessible, mock do
+                  server.deploy
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+
       ENV["APP_ENV"] = "test"
     end
 
@@ -94,9 +122,11 @@ describe Google::Cloud::Gemserver::CLI::Server do
         server.stub :system, true do
           server.stub :setup_default_keys, nil do
             server.stub :display_next_steps, nil do
-              server.config.stub :save_to_cloud, mock do
-                server.deploy
-                mock.verify
+              server.stub :wait_until_server_accessible, nil do
+                server.config.stub :save_to_cloud, mock do
+                  server.deploy
+                  mock.verify
+                end
               end
             end
           end
@@ -116,9 +146,11 @@ describe Google::Cloud::Gemserver::CLI::Server do
         server.stub :system, true do
           server.config.stub :save_to_cloud, nil do
             server.stub :display_next_steps, nil do
-              server.stub :setup_default_keys, mock do
-                server.deploy
-                mock.verify
+              server.stub :wait_until_server_accessible, nil do
+                server.stub :setup_default_keys, mock do
+                  server.deploy
+                  mock.verify
+                end
               end
             end
           end
@@ -136,9 +168,11 @@ describe Google::Cloud::Gemserver::CLI::Server do
         server.stub :system, true do
           server.config.stub :save_to_cloud, nil do
             server.stub :setup_default_keys, nil do
-              server.stub :display_next_steps, mock do
-                server.deploy
-                mock.verify
+              server.stub :wait_until_server_accessible, nil do
+                server.stub :display_next_steps, mock do
+                  server.deploy
+                  mock.verify
+                end
               end
             end
           end
