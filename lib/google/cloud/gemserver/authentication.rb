@@ -14,6 +14,8 @@
 
 require "google/cloud/gemserver"
 require "json"
+require "securerandom"
+require "tempfile"
 
 module Google
   module Cloud
@@ -52,7 +54,59 @@ module Google
           editors.each do |editor|
             return true if extract_account(editor) == user
           end
+          puts "You are either not authenticated with gcloud or lack access" \
+            "to the gemserver."
           false
+        end
+
+        ##
+        # Generates an auth token used for authenticated requests to the
+        # gemserver and stores it on Google Cloud Storage.
+        #
+        # @return [String]
+        def gen_token
+          return unless can_modify?
+          token = SecureRandom.uuid
+          f = Tempfile.new("token")
+          begin
+            f.write token
+            GCS.upload f, "#{Configuration::TOKEN_PATH}-#{token}"
+          ensure
+            f.unlink
+          end
+          token
+        end
+
+        ##
+        # Deletes the token from Google Cloud Storage.
+        #
+        # @param [String] token The token to delete.
+        #
+        # @return [Boolean]
+        def delete_token token
+          begin
+            GCS.delete_file "#{Configuration::TOKEN_PATH}-#{token}"
+            true
+          rescue
+            false
+          end
+        end
+
+        ##
+        # Verfies if an authentication token is valid by checking its existence
+        # and value with a given token.
+        #
+        # @param [String] token The token to be checked.
+        #
+        # @return [Boolean]
+        def check token
+          name = "#{Configuration::TOKEN_PATH}-#{token}"
+          if GCS.on_gcs? name
+            f = GCS.get_file(name).download
+            f.string == token
+          else
+            false
+          end
         end
 
         private

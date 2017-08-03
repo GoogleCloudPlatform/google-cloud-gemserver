@@ -57,7 +57,9 @@ module Google
           #
           # @return [Net::HTTPResponse]
           def create_key permissions = nil
-            send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions}
+            token = Google::Cloud::Gemserver::Authentication.new.gen_token
+            send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions,
+                                                      token: token}
           end
 
           ##
@@ -67,7 +69,8 @@ module Google
           #
           # @return [Net::HTTPResponse]
           def delete_key key
-            send_req Net::HTTP::Put, "/api/v1/key", {key: key}
+            token = Google::Cloud::Gemserver::Authentication.new.gen_token
+            send_req Net::HTTP::Put, "/api/v1/key", {key: key, token: token}
           end
 
           ##
@@ -76,7 +79,8 @@ module Google
           #
           # @return [Net::HTTPResponse]
           def stats
-            send_req Net::HTTP::Get, "/api/v1/stats"
+            token = Google::Cloud::Gemserver::Authentication.new.gen_token
+            send_req Net::HTTP::Post, "/api/v1/stats", {token: token}
           end
 
           ##

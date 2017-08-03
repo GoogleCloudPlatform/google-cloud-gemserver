@@ -16,6 +16,11 @@ require "helper"
 require "net/http"
 
 describe Google::Cloud::Gemserver::CLI::Request do
+
+  let(:token) {
+    "test-token"
+  }
+
   describe "Request.new" do
     it "creates an HTTP object for the gemserver" do
       bkd = GCG::CLI::Request.new "google.com"
@@ -27,10 +32,16 @@ describe Google::Cloud::Gemserver::CLI::Request do
     it "calls send_req with the correct arguments" do
       bkd = GCG::CLI::Request.new "google.com"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/key", {permissions: nil}]
-      bkd.stub :send_req, mock do
-        bkd.create_key
-        mock.verify
+      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/key", {permissions: nil, token: token}]
+
+      auth_mock = Minitest::Mock.new
+      auth_mock.expect :gen_token, token
+
+      GCG::Authentication.stub :new, auth_mock do
+        bkd.stub :send_req, mock do
+          bkd.create_key
+          mock.verify
+        end
       end
     end
   end
@@ -39,10 +50,16 @@ describe Google::Cloud::Gemserver::CLI::Request do
     it "calls send_req with the correct arguments" do
       bkd = GCG::CLI::Request.new "google.com"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [Net::HTTP::Put, "/api/v1/key", {key: "key"}]
-      bkd.stub :send_req, mock do
-        bkd.delete_key "key"
-        mock.verify
+      mock.expect :call, nil, [Net::HTTP::Put, "/api/v1/key", {key: "key", token: token}]
+
+      auth_mock = Minitest::Mock.new
+      auth_mock.expect :gen_token, token
+
+      GCG::Authentication.stub :new, auth_mock do
+        bkd.stub :send_req, mock do
+          bkd.delete_key "key"
+          mock.verify
+        end
       end
     end
   end
@@ -51,10 +68,17 @@ describe Google::Cloud::Gemserver::CLI::Request do
     it "calls send_req with the correct arguments" do
       bkd = GCG::CLI::Request.new "google.com"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [Net::HTTP::Get, "/api/v1/stats"]
-      bkd.stub :send_req, mock do
-        bkd.stats
-        mock.verify
+      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/stats", {token: token}]
+
+      auth_mock = Minitest::Mock.new
+      auth_mock.expect :gen_token, token
+
+      GCG::Authentication.stub :new, auth_mock do
+        bkd.stub :send_req, mock do
+          bkd.stats
+          mock.verify
+          auth_mock.verify
+        end
       end
     end
   end
