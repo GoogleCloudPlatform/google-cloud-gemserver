@@ -72,6 +72,15 @@ module Google
           end
         end
 
+        ##
+        # Fetches the version of the latest Google App Engine deploy.
+        #
+        # @return [String]
+        def latest_gae_deploy_version
+          `gcloud app versions list --project #{@config[:proj_id]}`
+            .split("\n").drop(1).last.split[1]
+        end
+
         private
 
         ##
