@@ -17,67 +17,71 @@ require "net/http"
 
 describe Google::Cloud::Gemserver::CLI::Request do
 
-  let(:token) {
-    "test-token"
-  }
+  let(:token) { { "access_token": "test-token" } }
 
   describe "Request.new" do
     it "creates an HTTP object for the gemserver" do
-      bkd = GCG::CLI::Request.new "google.com"
-      assert bkd.http.class == Net::HTTP
+      req = GCG::CLI::Request.new "google.com"
+      assert req.http.class == Net::HTTP
     end
   end
 
   describe "create_key" do
     it "calls send_req with the correct arguments" do
-      bkd = GCG::CLI::Request.new "google.com"
+      req = GCG::CLI::Request.new "google.com"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/key", {permissions: nil, token: token}]
+      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/key", {permissions: nil}]
 
-      auth_mock = Minitest::Mock.new
-      auth_mock.expect :gen_token, token
-
-      GCG::Authentication.stub :new, auth_mock do
-        bkd.stub :send_req, mock do
-          bkd.create_key
-          mock.verify
-        end
+      req.stub :send_req, mock do
+        req.create_key
+        mock.verify
       end
     end
   end
 
   describe "delete_key" do
     it "calls send_req with the correct arguments" do
-      bkd = GCG::CLI::Request.new "google.com"
+      req = GCG::CLI::Request.new "google.com"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [Net::HTTP::Put, "/api/v1/key", {key: "key", token: token}]
+      mock.expect :call, nil, [Net::HTTP::Put, "/api/v1/key", {key: "key"}]
 
-      auth_mock = Minitest::Mock.new
-      auth_mock.expect :gen_token, token
-
-      GCG::Authentication.stub :new, auth_mock do
-        bkd.stub :send_req, mock do
-          bkd.delete_key "key"
-          mock.verify
-        end
+      req.stub :send_req, mock do
+        req.delete_key "key"
+        mock.verify
       end
     end
   end
 
   describe ".stats" do
     it "calls send_req with the correct arguments" do
-      bkd = GCG::CLI::Request.new "google.com"
+      req = GCG::CLI::Request.new "google.com"
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/stats", {token: token}]
+      mock.expect :call, nil, [Net::HTTP::Post, "/api/v1/stats"]
 
-      auth_mock = Minitest::Mock.new
-      auth_mock.expect :gen_token, token
 
-      GCG::Authentication.stub :new, auth_mock do
-        bkd.stub :send_req, mock do
-          bkd.stats
-          mock.verify
-          auth_mock.verify
+      req.stub :send_req, mock do
+        req.stats
+        mock.verify
+      end
+    end
+  end
+
+  describe ".send_req" do
+    it "adds a token in request headers" do
+      req = GCG::CLI::Request.new "google.com"
+
+      mock = Minitest::Mock.new
+      mock.expect :access_token, token
+
+      http_mock = Minitest::Mock.new
+      http_mock.expect :initialize_http_header, nil, [Hash]
+
+      GCG::Authentication.stub :new, mock do
+        req.http.stub :request, nil do
+          Net::HTTP::Get.stub :new, http_mock do
+            req.send :send_req, Net::HTTP::Get, "/search?query=hi"
+            mock.verify
+          end
         end
       end
     end

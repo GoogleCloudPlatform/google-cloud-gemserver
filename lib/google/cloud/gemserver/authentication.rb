@@ -15,7 +15,9 @@
 require "google/cloud/gemserver"
 require "json"
 require "securerandom"
-require "tempfile"
+require "googleauth"
+require "net/http"
+require "uri"
 
 module Google
   module Cloud
@@ -55,58 +57,43 @@ module Google
             return true if extract_account(editor) == user
           end
           puts "You are either not authenticated with gcloud or lack access" \
-            "to the gemserver."
+            " to the gemserver."
           false
         end
 
         ##
-        # Generates an auth token used for authenticated requests to the
-        # gemserver and stores it on Google Cloud Storage.
+        # Generates an access token from a user authenticated by gcloud.
         #
         # @return [String]
-        def gen_token
+        def access_token
           return unless can_modify?
-          token = SecureRandom.uuid
-          f = Tempfile.new("token")
-          begin
-            f.write token
-            GCS.upload f, "#{Configuration::TOKEN_PATH}-#{token}"
-          ensure
-            f.unlink
-          end
-          token
-        end
-
-        ##
-        # Deletes the token from Google Cloud Storage.
-        #
-        # @param [String] token The token to delete.
-        #
-        # @return [Boolean]
-        def delete_token token
-          begin
-            GCS.delete_file "#{Configuration::TOKEN_PATH}-#{token}"
-            true
-          rescue
-            false
-          end
-        end
-
-        ##
-        # Verfies if an authentication token is valid by checking its existence
-        # and value with a given token.
-        #
-        # @param [String] token The token to be checked.
-        #
-        # @return [Boolean]
-        def check token
-          name = "#{Configuration::TOKEN_PATH}-#{token}"
-          if GCS.on_gcs? name
-            f = GCS.get_file(name).download
-            f.string == token
+          scope = ["https://www.googleapis.com/auth/cloud-platform"]
+          if ENV["GOOGLE_APPLICATION_CREDENTIALS"]
+            auth = Google::Auth::ServiceAccountCredentials.make_creds(
+              json_key_io: File.open(ENV["GOOGLE_APPLICATION_CREDENTIALS"]),
+              scope: scope
+            )
           else
-            false
+            auth = Google::Auth.get_application_default scope
           end
+          auth.fetch_access_token!
+        end
+
+        ##
+        # Uses the tokeninfo API to validate the given access token.
+        #
+        # @param [String] token The token to be validated.
+        #
+        # @return [Boolean]
+        def validate_token token
+          apis_url = "https://www.googleapis.com"
+          tokeninfo_endpoint = "/oauth2/v1/tokeninfo?access_token=#{token}"
+          uri = URI.parse apis_url
+          http = Net::HTTP.new uri.host, uri.port
+          http.use_ssl = true
+          res = http.request Net::HTTP::Post.new(tokeninfo_endpoint)
+
+          res.code.to_i == 200
         end
 
         private

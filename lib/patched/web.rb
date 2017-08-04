@@ -23,15 +23,11 @@ Gemstash::Web.class_eval do
   # gems, cached gems, gemserver creation time, etc.
   post "/api/v1/stats" do
     auth = Google::Cloud::Gemserver::Authentication.new
-    begin
-      if auth.check params["token"]
-        content_type "application/json;charset=UTF-8"
-        Google::Cloud::Gemserver::Backend::Stats.new.run
-      else
-        halt 401, "Unauthorized operation."
-      end
-    ensure
-      auth.delete_token params["token"]
+    if auth.validate_token request.env["HTTP_GEMSERVER_CREDENTIALS"]
+      content_type "application/json;charset=UTF-8"
+      Google::Cloud::Gemserver::Backend::Stats.new.run
+    else
+      halt 401, "Unauthorized operation."
     end
   end
 
@@ -40,16 +36,12 @@ Gemstash::Web.class_eval do
   # with given permissions. By default, a key with all permissions is created.
   post "/api/v1/key" do
     auth = Google::Cloud::Gemserver::Authentication.new
-    begin
-      if auth.check params["token"]
-        key = Google::Cloud::Gemserver::Backend::Key.create_key params["permissions"]
-        content_type "application/json;charset=UTF-8"
-        "Generated key: #{key}"
-      else
-        halt 401, "Unauthorized operation."
-      end
-    ensure
-      auth.delete_token params["token"]
+    if auth.validate_token request.env["HTTP_GEMSERVER_CREDENTIALS"]
+      key = Google::Cloud::Gemserver::Backend::Key.create_key params["permissions"]
+      content_type "application/json;charset=UTF-8"
+      "Generated key: #{key}"
+    else
+      halt 401, "Unauthorized operation."
     end
   end
 
@@ -57,20 +49,16 @@ Gemstash::Web.class_eval do
   # Deletes a key.
   put "/api/v1/key" do
     auth = Google::Cloud::Gemserver::Authentication.new
-    begin
-      if auth.check params["token"]
-        res = Google::Cloud::Gemserver::Backend::Key.delete_key params["key"]
-        content_type "application/json;charset=UTF-8"
-        if res
-          "Deleted key #{params["key"]} successfully."
-        else
-          "Deleting key #{params["key"]} failed."
-        end
+    if auth.validate_token request.env["HTTP_GEMSERVER_CREDENTIALS"]
+      res = Google::Cloud::Gemserver::Backend::Key.delete_key params["key"]
+      content_type "application/json;charset=UTF-8"
+      if res
+        "Deleted key #{params["key"]} successfully."
       else
-        halt 401, "Unauthorized operation."
+        "Deleting key #{params["key"]} failed."
       end
-    ensure
-      auth.delete_token params["token"]
+    else
+      halt 401, "Unauthorized operation."
     end
   end
 end

@@ -196,10 +196,6 @@ module Google
         DEFAULT_KEY_NAME = "master-gemserver-key".freeze
 
         ##
-        # File path of the token on Google Cloud Storage.
-        TOKEN_PATH = "/tmp/tokens/auth_token".freeze
-
-        ##
         # The configuration used by the gemserver.
         # @return [Hash]
         attr_accessor :config

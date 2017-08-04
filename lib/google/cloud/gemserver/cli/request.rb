@@ -57,9 +57,7 @@ module Google
           #
           # @return [Net::HTTPResponse]
           def create_key permissions = nil
-            token = Google::Cloud::Gemserver::Authentication.new.gen_token
-            send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions,
-                                                      token: token}
+            send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions}
           end
 
           ##
@@ -69,8 +67,7 @@ module Google
           #
           # @return [Net::HTTPResponse]
           def delete_key key
-            token = Google::Cloud::Gemserver::Authentication.new.gen_token
-            send_req Net::HTTP::Put, "/api/v1/key", {key: key, token: token}
+            send_req Net::HTTP::Put, "/api/v1/key", {key: key}
           end
 
           ##
@@ -79,8 +76,7 @@ module Google
           #
           # @return [Net::HTTPResponse]
           def stats
-            token = Google::Cloud::Gemserver::Authentication.new.gen_token
-            send_req Net::HTTP::Post, "/api/v1/stats", {token: token}
+            send_req Net::HTTP::Post, "/api/v1/stats"
           end
 
           ##
@@ -118,7 +114,10 @@ module Google
           #
           # @return [String]
           def send_req type, endpoint, params = nil
+            auth = Google::Cloud::Gemserver::Authentication.new
+            t = auth.access_token["access_token"]
             req = type.new endpoint
+            req.initialize_http_header({"GEMSERVER-CREDENTIALS": t})
             if type != Net::HTTP::Get
               req.set_form_data(params) if params
             end

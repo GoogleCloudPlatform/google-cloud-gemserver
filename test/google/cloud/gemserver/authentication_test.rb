@@ -14,7 +14,6 @@
 
 require "helper"
 require "yaml"
-require "tempfile"
 
 describe Google::Cloud::Gemserver::Authentication do
   describe ".new" do
@@ -25,8 +24,7 @@ describe Google::Cloud::Gemserver::Authentication do
 
   let(:owners) { ["serviceaccount:owner_a", "user:owner_b"] }
   let(:editors) { ["serviceaccount:editor_a", "user:editor_b"] }
-  let(:token) { "test-token" }
-  let(:invalid_token) { "wrong-token" }
+  let(:token) { { "access_token": "test-token" } }
 
   describe ".can_modify?" do
     it "returns true iff the logged in user is the project owner" do
@@ -66,96 +64,71 @@ describe Google::Cloud::Gemserver::Authentication do
     end
   end
 
-  describe ".gen_token" do
-    it "creates and uploads a token if the user is authenticated" do
+  describe ".access_token" do
+    it "creates a token if the user is authorized with default credentials" do
       auth = GCG::Authentication.new
 
-      gen_mock = Minitest::Mock.new
-      gen_mock.expect :call, token
+      mock = Minitest::Mock.new
+      mock.expect :fetch_access_token!, token
 
-      upload_mock = Minitest::Mock.new
-      upload_mock.expect :call, nil, [Tempfile, "#{GCG::Configuration::TOKEN_PATH}-#{token}"]
+      tmp = ENV["GOOGLE_APPLICATION_CREDENTIALS"]
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = nil
 
       auth.stub :can_modify?, true do
-        GCG::GCS.stub :upload, upload_mock do
-          SecureRandom.stub :uuid, gen_mock do
-            auth.gen_token
-            gen_mock.verify
-            upload_mock.verify
-          end
+        Google::Auth.stub :get_application_default, mock do
+          t = auth.access_token
+          assert_equal t, token
+          mock.verify
         end
       end
+
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = tmp
     end
 
-    it "does nothing if user is not authenticated" do
+    it "creates a token if the user is authorized with a service account" do
+      auth = GCG::Authentication.new
+
+      mock = Minitest::Mock.new
+      mock.expect :fetch_access_token!, token
+
+      tmp = ENV["GOOGLE_APPLICATION_CREDENTIALS"]
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = "test"
+
+      auth.stub :can_modify?, true do
+        Google::Auth::ServiceAccountCredentials.stub :make_creds, mock do
+          t = auth.access_token
+          assert_equal t, token
+          mock.verify
+        end
+      end
+
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = tmp
+    end
+
+    it "does nothing if the user is not authenticated" do
       auth = GCG::Authentication.new
 
       auth.stub :can_modify?, false do
-        assert_nil auth.gen_token
+        refute auth.access_token
       end
     end
   end
 
-  describe ".delete_token" do
-    it "deletes the token" do
+  describe "validate_token" do
+    it "sends a post request to the tokeninfo api with the token" do
       auth = GCG::Authentication.new
 
-      gcs_mock = Minitest::Mock.new
-      gcs_mock.expect :call, nil, ["#{GCG::Configuration::TOKEN_PATH}-#{token}"]
+      res_mock = Minitest::Mock.new
+      res_mock.expect :code, "200"
 
-      auth.stub :can_modify?, true do
-        GCG::GCS.stub :delete_file, gcs_mock do
-          auth.delete_token token
-          gcs_mock.verify
-        end
-      end
-    end
-  end
+      http_mock = Minitest::Mock.new
+      http_mock.expect :request, res_mock, [Net::HTTP::Post]
+      http_mock.expect :use_ssl=, true, [true]
 
-  describe ".check" do
-    it "returns true if token exists and value matches" do
-      auth = GCG::Authentication.new
-
-      string_mock = Minitest::Mock.new
-      string_mock.expect :string, token
-
-      dl_mock = Minitest::Mock.new
-      dl_mock.expect :download, string_mock
-
-      file_mock = Minitest::Mock.new
-      file_mock.expect :call, dl_mock, ["#{GCG::Configuration::TOKEN_PATH}-#{token}"]
-
-      GCG::GCS.stub :on_gcs?, true do
-        GCG::GCS.stub :get_file, file_mock do
-          assert auth.check(token)
-        end
-      end
-    end
-
-    it "returns false if the token has the wrong value" do
-      auth = GCG::Authentication.new
-
-      string_mock = Minitest::Mock.new
-      string_mock.expect :string, token
-
-      dl_mock = Minitest::Mock.new
-      dl_mock.expect :download, string_mock
-
-      file_mock = Minitest::Mock.new
-      file_mock.expect :call, dl_mock, ["#{GCG::Configuration::TOKEN_PATH}-#{invalid_token}"]
-
-      GCG::GCS.stub :on_gcs?, true do
-        GCG::GCS.stub :get_file, file_mock do
-          refute auth.check(invalid_token)
-        end
-      end
-    end
-
-    it "returns false if the token does not exist" do
-      auth = GCG::Authentication.new
-
-      GCG::GCS.stub :on_gcs?, false do
-        refute auth.check(token)
+      Net::HTTP.stub :new, http_mock do
+        auth.validate_token token["access_token"]
+        http_mock.verify
+        res_mock.verify
       end
     end
   end
