@@ -38,8 +38,13 @@ module Google
           ##
           # Initialize the Backend object by constructing an HTTP object for the
           # gemserver.
-          def initialize url = nil
-            gemserver_url = url.nil? == true ? remote : url
+          #
+          # @param [String] url The URL of the gemserver. Optional.
+          #
+          # @param [String] proj_name The name of the Google Cloud Platform the
+          # gemserver was deployed to. Optional.
+          def initialize url = nil, proj_name = nil
+            gemserver_url = url.nil? == true ? remote(proj_name) : url
             @http = Net::HTTP.new gemserver_url
           end
 
@@ -50,7 +55,7 @@ module Google
           # @param [String] permissions The permissions the generated key will
           # have (read, write, or both). Optional.
           #
-          # @return [String]
+          # @return [Net::HTTPResponse]
           def create_key permissions = nil
             send_req Net::HTTP::Post, "/api/v1/key", {permissions: permissions}
           end
@@ -60,7 +65,7 @@ module Google
           #
           # @param [String] key The key to delete.
           #
-          # @return [String]
+          # @return [Net::HTTPResponse]
           def delete_key key
             send_req Net::HTTP::Put, "/api/v1/key", {key: key}
           end
@@ -69,15 +74,30 @@ module Google
           # Send a request to the gemserver to fetch information about stored
           # private gems and cached gem dependencies.
           #
-          # @return [String]
+          # @return [Net::HTTPResponse]
           def stats
-            send_req Net::HTTP::Get, "/api/v1/stats"
+            send_req Net::HTTP::Post, "/api/v1/stats"
+          end
+
+          ##
+          # Sends a request to the gemserver to ensure it is accessible.
+          #
+          # @return [Net::HTTPResponse]
+          def health
+            send_req Net::HTTP::Get, "/health"
           end
 
           private
 
-          def remote
-            descrip = YAML.load(`gcloud app describe`)
+          ##
+          # @private The URL of the gemserver.
+          #
+          # @param [String] proj_name The Google Cloud Platform project the
+          # gemserver was deployed to.
+          #
+          # @return [String]
+          def remote proj_name
+            descrip = YAML.load(`gcloud app describe --project #{proj_name}`)
             descrip["defaultHostname"]
           end
 
@@ -94,11 +114,14 @@ module Google
           #
           # @return [String]
           def send_req type, endpoint, params = nil
+            auth = Google::Cloud::Gemserver::Authentication.new
+            t = auth.access_token["access_token"]
             req = type.new endpoint
+            req["Authorization"] = Signet::OAuth2.generate_bearer_authorization_header t
             if type != Net::HTTP::Get
               req.set_form_data(params) if params
             end
-            (@http.request req).body
+            @http.request req
           end
         end
       end

@@ -10,7 +10,7 @@ tests so gems do not get deleted)
 4) test_config.yml ("testing" environment, useful for running the gemserver
 locally)
 
-These files are auto generated with default settings when any `google-cloud-gemserver` command is run. They can be explicitly created by running `google-cloud-gemserver gen_config`. The files are stored at ~/.google_cloud_gemserver by default. The config directory can be changed by setting a GEMSERVER_CONFIG_DIR environment variable to the path of your configuration directory. If that environment variable is set, it will check that directory for configuration files first before checking the default directory.
+These files are auto generated with default settings when any `google-cloud-gemserver` command is run. They can be explicitly created by running `google-cloud-gemserver gen-config`. The files are stored at ~/.google_cloud_gemserver by default. The config directory can be changed by setting a GEMSERVER_CONFIG_DIR environment variable to the path of your configuration directory. If that environment variable is set, it will check that directory for configuration files first before checking the default directory.
 
 Note that the configuration directory is a convenience for gemserver deployment, it is not used by the gemserver on Google App Engine.
 

@@ -24,6 +24,8 @@ describe Google::Cloud::Gemserver::Authentication do
 
   let(:owners) { ["serviceaccount:owner_a", "user:owner_b"] }
   let(:editors) { ["serviceaccount:editor_a", "user:editor_b"] }
+  let(:token) { { "access_token": "test-token" } }
+  let(:header) { "Bearer #{token[:access_token]}" }
 
   describe ".can_modify?" do
     it "returns true iff the logged in user is the project owner" do
@@ -57,6 +59,103 @@ describe Google::Cloud::Gemserver::Authentication do
           end
           auth.stub :curr_user, "invalid_user" do
             refute auth.can_modify?
+          end
+        end
+      end
+    end
+  end
+
+  describe ".access_token" do
+    it "creates a token if the user is authorized with default credentials" do
+      auth = GCG::Authentication.new
+
+      mock = Minitest::Mock.new
+      mock.expect :fetch_access_token!, token
+
+      tmp = ENV["GOOGLE_APPLICATION_CREDENTIALS"]
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = nil
+
+      auth.stub :can_modify?, true do
+        Google::Auth.stub :get_application_default, mock do
+          t = auth.access_token
+          assert_equal t, token
+          mock.verify
+        end
+      end
+
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = tmp
+    end
+
+    it "creates a token if the user is authorized with a service account" do
+      auth = GCG::Authentication.new
+
+      mock = Minitest::Mock.new
+      mock.expect :fetch_access_token!, token
+
+      tmp = ENV["GOOGLE_APPLICATION_CREDENTIALS"]
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = "test"
+
+      auth.stub :can_modify?, true do
+        Google::Auth.stub :get_application_default, mock do
+          t = auth.access_token
+          assert_equal t, token
+          mock.verify
+        end
+      end
+
+      ENV["GOOGLE_APPLICATION_CREDENTIALS"] = tmp
+    end
+
+    it "does nothing if the user is not authenticated" do
+      auth = GCG::Authentication.new
+
+      auth.stub :can_modify?, false do
+        refute auth.access_token
+      end
+    end
+  end
+
+  describe "validate_token" do
+    it "gets the latest app version" do
+      auth = GCG::Authentication.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String]
+
+      res_mock = Minitest::Mock.new
+      res_mock.expect :body, "{ \"name\": \"test\" }"
+
+      auth.stub :send_req, res_mock do
+        auth.stub :check_status, true do
+          auth.stub :wait_for_op, nil do
+            auth.stub :appengine_version, mock do
+              auth.send :validate_token, header
+              mock.verify
+            end
+          end
+        end
+      end
+    end
+
+    it "performs a redundant project update" do
+      auth = GCG::Authentication.new
+      path = "/v1/apps/#{auth.proj}/services/default?updateMask=split"
+      params = {
+        "split" => {
+          "allocations" => {
+            "123" => 1
+          }
+        }
+      }
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String, path, Net::HTTP::Patch, token[:access_token], params]
+
+      auth.stub :send_req, mock do
+        auth.stub :check_status, false do
+          auth.stub :appengine_version, "123" do
+            auth.send :validate_token, header
+            assert_equal auth.appengine_version("abc"), params["split"]["allocations"].first[0]
+            mock.verify
           end
         end
       end

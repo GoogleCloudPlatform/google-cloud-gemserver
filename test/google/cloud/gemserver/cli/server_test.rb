@@ -44,9 +44,40 @@ describe Google::Cloud::Gemserver::CLI::Server do
   end
 
   describe ".deploy" do
+    # TODO: resolve below conflict when cli/server.rb finalized
+    '''
+#<<<<<<< add-gke-option
     it "calls Deployer" do
+#=======
+    it "calls prepare_dir" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :system, true do
+        server.config.stub :save_to_cloud, nil do
+          server.stub :setup_default_keys, nil do
+            server.stub :display_next_steps, nil do
+              server.stub :prepare_dir, mock do
+                server.stub :wait_until_server_accessible, nil do
+                  server.deploy
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+
+      ENV["APP_ENV"] = "test"
+    end
+
+    it "calls gcloud app deploy" do
+#>>>>>>> master
       server = GCG::CLI::Server.new
       ENV["APP_ENV"] = "production"
+#<<<<<<< add-gke-option
       mock = Minitest::Mock.new
       mock.expect :deploy, :nil
 
@@ -57,12 +88,119 @@ describe Google::Cloud::Gemserver::CLI::Server do
               server.stub :setup_default_keys, nil do
                 server.deploy
                 mock.verify
+#=======
+      mock_server = Minitest::Mock.new
+      mock_server.expect :call, true, ["gcloud app deploy #{app_path} -q --project #{server.config[:proj_id]}"]
+
+      server.stub :system, mock_server do
+        server.stub :prepare_dir, nil do
+          server.config.stub :save_to_cloud, nil do
+            server.stub :setup_default_keys, nil do
+              server.stub :display_next_steps, nil do
+                server.stub :wait_until_server_accessible, nil do
+                  server.deploy
+                  mock_server.verify
+                end
               end
             end
           end
         end
       end
       ENV["APP_ENV"] = "test"
+    end
+
+    it "waits for the gemserver to be accessible" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.config.stub :save_to_cloud, nil do
+          server.stub :system, true do
+            server.stub :setup_default_keys, nil do
+              server.stub :display_next_steps, nil do
+                server.stub :wait_until_server_accessible, mock do
+                  server.deploy
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+
+      ENV["APP_ENV"] = "test"
+    end
+
+    it "saves the deploy config file to GCS" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :system, true do
+          server.stub :setup_default_keys, nil do
+            server.stub :display_next_steps, nil do
+              server.stub :wait_until_server_accessible, nil do
+                server.config.stub :save_to_cloud, mock do
+                  server.deploy
+                  mock.verify
+                end
+#>>>>>>> master
+              end
+            end
+          end
+        end
+      end
+
+      ENV["APP_ENV"] = "test"
+    end
+    '''
+
+    it "calls setup_default_keys" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :system, true do
+          server.config.stub :save_to_cloud, nil do
+            server.stub :display_next_steps, nil do
+              server.stub :wait_until_server_accessible, nil do
+                server.stub :setup_default_keys, mock do
+                  server.deploy
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "calls display_next_steps" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :system, true do
+          server.config.stub :save_to_cloud, nil do
+            server.stub :setup_default_keys, nil do
+              server.stub :wait_until_server_accessible, nil do
+                server.stub :display_next_steps, mock do
+                  server.deploy
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
     end
   end
 
@@ -72,10 +210,12 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock_server = Minitest::Mock.new
       mock_server.expect :call, nil
 
-      server.config.stub :metadata, gae do
-        server.stub :deploy, mock_server do
-          server.update "test"
-          mock_server.verify
+      GCG::Configuration.stub :deployed?, true do
+        server.config.stub :metadata, gae do
+          server.stub :deploy, mock_server do
+            server.update
+            mock_server.verify
+          end
         end
       end
     end
@@ -85,10 +225,12 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock = Minitest::Mock.new
       mock.expect :update_gke_deploy, nil
 
-      server.config.stub :metadata, gke do
-        Google::Cloud::Gemserver::Deployer.stub :new, mock do
-          server.update
-          mock.verify
+      GCG::Configuration.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          Google::Cloud::Gemserver::Deployer.stub :new, mock do
+            server.update
+            mock.verify
+          end
         end
       end
     end
@@ -97,6 +239,9 @@ describe Google::Cloud::Gemserver::CLI::Server do
   describe ".delete" do
     it "calls gcloud app services delete default for gae" do
       server = GCG::CLI::Server.new
+
+      config_mock = Minitest::Mock.new
+      config_mock.expect :delete_from_cloud, nil
       mock_server = Minitest::Mock.new
       mock_server.expect :call, nil, ["gcloud app services delete default"]
       mock_server.expect :call, nil, [String]

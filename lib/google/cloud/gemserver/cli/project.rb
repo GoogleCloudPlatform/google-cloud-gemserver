@@ -55,7 +55,6 @@ module Google
           def create platform = "gae"
             raise "Project name was not provided!" unless @proj_name
             begin
-              system "gcloud config set project #{@proj_name}"
               @config.update_config @proj_name, :proj_id
               update_metadata platform
               create_gae_project
@@ -88,7 +87,7 @@ module Google
           def create_gae_project
             return if @config.metadata[:platform] == "gke" || project_exists?
             puts "Required Google App Engine project does not exist."
-            system "gcloud app create"
+            system "gcloud app create --project #{@proj_name}"
           end
 
           ##
@@ -96,7 +95,7 @@ module Google
           #
           # @return [Boolean]
           def project_exists?
-            system "gcloud app describe > /dev/null 2>&1"
+            system "gcloud app describe --project #{@proj_name} >/dev/null 2>&1"
           end
 
           ##
@@ -104,6 +103,7 @@ module Google
           #
           # @return [String]
           def prompt_user
+            puts "\nPress enter to continue..."
             STDIN.gets
           end
 
@@ -123,44 +123,44 @@ module Google
           # @return [String]
           def enable_api
             @config.metadata[:platform] == "gke" ? gke_apis : gae_apis
-            puts "Press Enter after enabling the APIs to continue"
-            prompt_user
           end
 
           ##
           # @private Outputs APIs that must be enabled for the project to
           # deploy the gemserver to Google App Engine.
           def gae_apis
-            puts "Enable the Google Cloud SQL API if it is not already "\
-              "enabled by visiting: https://console.developers.google.com"\
-              "/apis/api/sqladmin.googleapis.com/overview?project=#{@proj_name}"\
-              " and clicking \"Enable\""
-            puts "Enable the Google Cloud Resource manager API if it is not already "\
-              "enabled by visiting: https://console.developers.google.com"\
-              "/apis/api/cloudresourcemanager.googleapis.com/overview?project=#{@proj_name}"\
-              " and clicking \"Enable\""
-            puts "Enable the Google App Engine Admin API if it is not already "\
-              "enabled by visiting: https://console.developers.google.com"\
-              "/apis/api/appengine.googleapis.com/overview?project=#{@proj_name}"\
-              " and clicking \"Enable\""
+            puts "\nEnable the Google Cloud SQL API if it is not already "\
+              "enabled by visiting:\n https://console.developers.google.com"\
+              "/apis/api/sqladmin.googleapis.com/overview?"\
+              "project=#{@proj_name} and clicking \"Enable\""
+            puts "\nEnable the Google Cloud Resource manager API if it is not"\
+              "already enabled by visiting:\nhttps://console.developers.google"\
+              ".com/apis/api/cloudresourcemanager.googleapis.com/overview?"\
+              "project=#{@proj_name} and clicking \"Enable\""
+            puts "\nEnable the Google App Engine Admin API if it is not "\
+              "already enabled by visiting:\nhttps://console.developers.google"\
+              ".com/apis/api/appengine.googleapis.com/overview?"\
+              "project=#{@proj_name} and clicking \"Enable\""
+            prompt_user
           end
 
           ##
           # @private Outputs APIs that must be enabled for the project to
           # deploy the gemserver to Google Container Engine.
           def gke_apis
-            puts "Enable the Google Cloud SQL API if it is not already "\
+            puts "\nEnable the Google Cloud SQL API if it is not already "\
               "enabled by visiting: https://console.developers.google.com"\
               "/apis/api/container.googleapis.com/overview?project=#{@proj_name}"\
               " and clicking \"Enable\""
-            puts "Enable the Google Cloud Resource manager API if it is not already "\
+            puts "\nEnable the Google Cloud Resource manager API if it is not already "\
               "enabled by visiting: https://console.developers.google.com"\
               "/apis/api/containerregistry.googleapis.com/overview?project=#{@proj_name}"\
               " and clicking \"Enable\""
-            puts "Enable the Google App Engine Admin API if it is not already "\
+            puts "\nEnable the Google App Engine Admin API if it is not already "\
               "enabled by visiting: https://console.developers.google.com"\
               "/apis/api/compute.googleapis.com/overview?project=#{@proj_name}"\
               " and clicking \"Enable\""
+            prompt user
           end
 
           ##
@@ -169,10 +169,9 @@ module Google
           #
           # @return [String]
           def enable_billing
-            puts "Enable billing for the project you just created by "\
-              "visiting the Google Cloud Platform console and selecting "\
-              "your new project."
-            puts "Press Enter after doing so to continue"
+            puts "\nEnable billing for the project you just created by "\
+              "visiting: \nconsole.cloud.google.com/billing?project="\
+              "#{@proj_name}\nand setting up a billing account."
             prompt_user
           end
         end

@@ -122,17 +122,14 @@ module Google
           "Options: write, read, both. Default is both."
         method_option :remote, type: :string, aliases: "-r", desc:
           "The gemserver URL, i.e. gemserver.com"
+        method_option :use_proj, type: :string, aliases: "-g", desc:
+          "The GCP project the gemserver was deployed to."
         def create_key
           if ENV["APP_ENV"] == "test"
             return Backend::Key.create_key(options[:permissions])
           end
-          if Authentication.new.can_modify?
-            puts Request.new(options[:remote]).create_key options[:permissions]
-            Backend::Key.output_key_info
-          else
-            puts "You are either not authenticated with gcloud or lack" \
-              " access to the gemserver and cannot create a key."
-          end
+          puts Request.new(options[:remote], options[:use_proj]).create_key(options[:permissions]).body
+          Backend::Key.output_key_info
         end
 
         ##
@@ -143,16 +140,13 @@ module Google
           "The key to delete"
         method_option :remote, type: :string, aliases: "-r", desc:
           "The gemserver URL, i.e. gemserver.com"
+        method_option :use_proj, type: :string, aliases: "-g", desc:
+          "The GCP project the gemserver was deployed to."
         def delete_key
           if ENV["APP_ENV"] == "test"
             return Backend::Key.delete_key(options[:key])
           end
-          if Authentication.new.can_modify?
-            puts Request.new(options[:remote]).delete_key options[:key]
-          else
-            puts "You are either not authenticated with gcloud or lack" \
-              " access to the gemserver and cannot delete a key."
-          end
+          puts Request.new(options[:remote], options[:use_proj]).delete_key(options[:key]).body
         end
 
         ##
@@ -169,10 +163,12 @@ module Google
         desc "stats", "Displays statistics on the given gemserver"
         method_option :remote, type: :string, aliases: "-r", desc:
           "The gemserver URL, i.e. gemserver.com"
+        method_option :use_proj, type: :string, aliases: "-g", desc:
+          "The GCP project the gemserver was deployed to."
         def stats
           return Backend::Stats.new.run if ENV["APP_ENV"] == "test"
           Backend::Stats.new.log_app_description
-          puts Request.new(options[:remote]).stats
+          puts Request.new(options[:remote], options[:use_proj]).stats.body
         end
 
         desc "gen_config", "Generates configuration files with default" \

@@ -60,12 +60,13 @@ module Google
           # Platform the gemserver was deployed to.
           def log_app_description
             return "" if ENV["APP_ENV"] == "test"
-            set_project
             puts "Project Information:"
+            
             if @config.metadata[:platform] == "gke"
               system "kubectl describe services"
             else
-              puts run_cmd("gcloud app describe").gsub("\n", "\n\t").prepend "\t"
+              cmd = "gcloud app describe --project #{@proj}"
+              puts run_cmd(cmd).gsub("\n", "\n\t").prepend "\t"
             end
           end
 
@@ -137,12 +138,6 @@ module Google
           # @return [Array]
           def db table
             env.db[table].all
-          end
-
-          ##
-          # @private Sets the gcloud project to the project of the gemserver.
-          def set_project
-            system "gcloud config set project #{@proj}"
           end
 
           ##

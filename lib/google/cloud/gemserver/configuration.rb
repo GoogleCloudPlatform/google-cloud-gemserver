@@ -214,11 +214,16 @@ module Google
         end
 
         ##
-        # Saves the configuration file used for a deployment to Google Cloud
-        # Storage.
+        # Saves the configuration file used for a deployment.
         def save_to_cloud
           puts "Saving configuration"
           GCS.upload config_path, GCS_PATH
+        end
+
+        ##
+        # Deletes the configuration file used for a deployment
+        def delete_from_cloud
+          GCS.delete_file GCS_PATH
         end
 
         ##
@@ -292,12 +297,11 @@ module Google
         ##
         # Displays the configuration used by the current gemserver
         def self.display_config
-          config = GCS.get_file GCS_PATH
-          unless config
+          unless deployed?
             puts "No configuration found. Was the gemserver deployed?"
             return
           end
-          prepare config
+          prepare GCS.get_file(GCS_PATH)
           puts "Gemserver is running with this configuration:"
           puts YAML.load_file(GCS_PATH).to_yaml
           cleanup
@@ -320,6 +324,14 @@ module Google
           path = "#{config_dir}/metadata.yml"
           return Hash.new unless File.file?(path)
           YAML.load_file path
+        end
+        
+        # Checks if the gemserver was deployed by the existence of the config
+        # file used to deploy it on a specific path on Google Cloud Storage.
+        #
+        # @return [Boolean]
+        def self.deployed?
+          !GCS.get_file(GCS_PATH).nil?
         end
 
         private

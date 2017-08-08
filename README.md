@@ -28,13 +28,11 @@ Or install it yourself as:
 
 ### Basic Prerequisites
   1) Create a Google Cloud Platform (GCP) project.
-  2) Create a Google App Engine project in the GCP if one does not already
-  exist. Ensure billing is enabled.
-  3) Install and setup the [gcloud SDK](https://cloud.google.com/sdk/downloads). Currently, versions 161+ are supported.
-  4) Install the beta and kubectl component for gcloud by running `gcloud component install beta kubectl`
-  5) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
+  2) Install and setup the [gcloud SDK](https://cloud.google.com/sdk/downloads). Currently, versions 161+ are supported.
+  3) Install the beta and kubectl component for gcloud by running `gcloud component install beta kubectl`
+  4) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
   Using a service account is the recommended method for authentication; application default credentials should only be used for development purporses. Read this [authentication guide](docs/authentication.md) for more information.
-  6) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
+  5) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
 
 ### Gemserver on Google Container Engine Workflow
 1) Set the GEMSERVER_CREDS environment variable to the path to your project
@@ -57,7 +55,14 @@ endpoint you can use to push/download gems from the gemserver.
 
 ### Gemserver on Google App Engine Workflow
   1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the CLoud SQL SLA coverage.
-  2) Generate a key (referred to as my-key) by running `google-cloud-gemserver create_key` for your gemserver. By default, this generates a key with both read and write permissions. For more information about keys, read [this](docs/key.md).
+  2) Install and setup the [gcloud SDK](https://cloud.google.com/sdk/downloads). Currently, versions 161+ are supported.
+  3) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
+  Using a service account is the recommended method for authentication; application default credentials should only be used for development purporses. Read this [authentication guide](docs/authentication.md) for more information.
+  4) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
+
+### Typical Workflow
+  1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the Cloud SQL SLA coverage.
+  2) Generate a key (referred to as my-key) by running `google-cloud-gemserver create-key --use-proj YOUR_PROJECT_ID` for your gemserver. By default, this generates a key with both read and write permissions. For more information about keys, read [this](docs/key.md).
   3) Add this key to your bundle config by running `bundle config http://gemserver-url.com/private/ my-key` where gemserver-url is the same as your project's url, e.g. http://my-project.appspot.com/private/. This is necessary to download gems.
   4) Add this key to your gem credentials as my-key (in ~/.gem/credentials): `:my-key: [KEY]` This is necessary to push gems (if the key has write permission).
   5) Push private gems to the gemserver as described [below](#pushing-gems).
@@ -115,31 +120,35 @@ and the heartbeat of the gemserver.
     google-cloud-gemserver create
 
     Options:
-    *  -g, [--use-proj=USE_PROJ]  # Existing project to deploy gemserver to
-    *  -i, [--use-inst=USE_INST]  # Existing project to deploy gemserver to
+    *  -g, [--use-proj=USE_PROJ]        # Existing project to deploy gemserver to
+    *  -i, [--use-inst=USE_INST]        # Existing project to deploy gemserver to
 
     Creates and deploys the gem server then starts it
 
   * `google-cloud-gemserver create-key`
 
     Usage:
-      google-cloud-gemserver create_key
+      google-cloud-gemserver create-key
 
     Options:
-      -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
-      -p, [--permissions=PERMISSIONS]  # Options: write, read, both. Default is
+    *  -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
+    *  -p, [--permissions=PERMISSIONS]  # Options: write, read, both. Default is
       both.
+    *  -g, [--use-proj=USE_PROJ]        # The GCP project the gemserver was
+       deployed to.
 
       Creates an authentication key
 
-  * `google-cloud-gemserver delete_key`
+  * `google-cloud-gemserver delete-key`
 
     Usage:
-      google-cloud-gemserver delete_key
+      google-cloud-gemserver delete-key
 
     Options:
-      -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
-      -k, [--key=KEY]                  # The key to delete
+    *  -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
+    *  -k, [--key=KEY]                  # The key to delete
+    *  -g, [--use-proj=USE_PROJ]        # The GCP project the gemserver was
+       deployed to.
 
       Deletes a given key
 
@@ -149,7 +158,7 @@ and the heartbeat of the gemserver.
       google-cloud-gemserver delete
 
     Options:
-    *  -g, [--use-proj=USE_PROJ]  # Project id of GCP project the gemserver was deployed to. Warning: parent project and CloudSQL instance will also be deleted
+    *  -g, [--use-proj=USE_PROJ]        # Project id of GCP project the gemserver was deployed to. Warning: parent project and CloudSQL instance will also be deleted
 
       Delete a given gemserver
 
@@ -168,6 +177,8 @@ and the heartbeat of the gemserver.
 
     Options:
     *  -r, [--remote=REMOTE]            # The gemserver URL, i.e. gemserver.com
+    *  -g, [--use-proj=USE_PROJ]        # The GCP project the gemserver was
+       deployed to.
 
     Displays statistics on the given gemserver
 
@@ -178,10 +189,10 @@ and the heartbeat of the gemserver.
 
     Redeploys the gemserver with the current config file and google-cloud-gemserver gem version (a deploy must have succeeded for 'update' to work)
 
-  * `google-cloud-gemserver gen_config`
+  * `google-cloud-gemserver gen-config`
 
     Usage:
-      google-cloud-gemserver gen_config
+      google-cloud-gemserver gen-config
 
     Generates configuration files with default values
 

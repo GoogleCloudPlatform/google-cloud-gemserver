@@ -13,6 +13,10 @@
 # limitations under the License.
 
 require "google/cloud/gemserver"
+require "json"
+require "googleauth"
+require "net/http"
+require "uri"
 
 module Google
   module Cloud
@@ -51,10 +55,139 @@ module Google
           editors.each do |editor|
             return true if extract_account(editor) == user
           end
+          puts "You are either not authenticated with gcloud or lack access" \
+            " to the gemserver."
           false
         end
 
+        ##
+        # Generates an access token from a user authenticated by gcloud.
+        #
+        # @return [String]
+        def access_token
+          return unless can_modify?
+          scope = ["https://www.googleapis.com/auth/cloud-platform"]
+          auth = Google::Auth.get_application_default scope
+          auth.fetch_access_token!
+        end
+
+        ##
+        # @private Implicitly checks if the account that generated the token
+        # has edit permissions on the Google Cloud Platform project by issuing
+        # a redundant update to the project (update to original settings).
+        #
+        # @param [String] The authentication token generated from gcloud.
+        #
+        # @return [Boolean]
+        def validate_token auth_header
+          token = auth_header.split.drop(1)[0]
+
+          appengine_url = "https://appengine.googleapis.com"
+          endpoint = "/v1/apps/#{@proj}/services/default?updateMask=split"
+          version = appengine_version token
+          split = {
+            "split" => {
+              "allocations" => {
+                version.to_s => 1
+              }
+            }
+          }
+          res = send_req appengine_url, endpoint, Net::HTTP::Patch, token, split
+          if check_status(res)
+            op = JSON.parse(res.body)["name"]
+            wait_for_op appengine_url, "/v1/#{op}", token
+            true
+          else
+            false
+          end
+        end
+
         private
+
+        ##
+        # @private Fetches the latest version of the deployed Google App Engine
+        # instance running the gemserver (default service only).
+        #
+        # @param [String] The authentication token generated from gcloud.
+        #
+        # @return [String]
+        def appengine_version token
+          appengine_url = "https://appengine.googleapis.com"
+          path = "/v1/apps/#{@proj}/services/default"
+          res = send_req appengine_url, path, Net::HTTP::Get, token
+
+          fail "Unauthorized" unless check_status(res)
+
+          JSON.parse(res.body)["split"]["allocations"].first[0]
+        end
+
+        ##
+        # @private Sends a request to a given URL with given parameters.
+        #
+        # @param [String] dom The protocol + domain name of the request.
+        #
+        # @param [String] path The path of the URL.
+        #
+        # @param [Net::HTTP] type The type of request to be made.
+        #
+        # @param [String] token The authentication token used in the header.
+        #
+        # @param [Hash] params Additional parameters send in the request body.
+        #
+        # @return [Net::HTTPResponse]
+        def send_req dom, path, type, token, params = nil
+          uri = URI.parse dom
+          http = Net::HTTP.new uri.host, uri.port
+          http.use_ssl = true if dom.include? "https"
+
+          req = type.new path
+          req["Authorization"] = Signet::OAuth2.generate_bearer_authorization_header token
+          unless type == Net::HTTP::Get
+            if params
+              req["Content-Type"] = "application/json"
+              req.body = params.to_json
+            end
+          end
+          http.request req
+        end
+
+        ##
+        # @private Waits for a project update operation to complete.
+        #
+        # @param [String] dom The domain and protocol of the request.
+        #
+        # @param [String] path The path of the request containing the operation
+        # ID.
+        #
+        # @param [String] token The authorization token in the request.
+        #
+        # @param [Integer] timeout The length of time the operation is polled.
+        def wait_for_op dom, path, token, timeout = 60
+          start = Time.now
+          loop do
+            if Time.now - start > timeout
+              fail "Operation at #{path} failed to complete in time"
+            else
+              res = send_req dom, path, Net::HTTP::Get, token
+              if JSON.parse(res.body)["done"] == true
+                break
+              end
+              sleep 1
+            end
+          end
+        end
+
+        ##
+        # @private Checks if a request response matches a given status code.
+        #
+        # @param [Net::HTTPResponse] reponse The response from a request.
+        #
+        # @param [Integer] code The desired response code.
+        #
+        # @return [Boolean]
+        def check_status response, code = 200
+          response.code.to_i == code
+        end
 
         ##
         # @private Fetches the members with a specific role that have access
@@ -91,10 +224,11 @@ module Google
         #
         # @return [String]
         def curr_user
-          raw = run_cmd "gcloud auth list"
-          active_idx = raw.index("*")
-          abort "You are not authenticated with gcloud" unless active_idx
-          raw[active_idx + 1 .. raw.index("\n", active_idx)].strip
+          raw = run_cmd "gcloud auth list --format json"
+          JSON.load(raw).map do |i|
+            return i["account"] if i["status"] == "ACTIVE"
+          end
+          abort "You are not authenticated with gcloud"
         end
 
         ##

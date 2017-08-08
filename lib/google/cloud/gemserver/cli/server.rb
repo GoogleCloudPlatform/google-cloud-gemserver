@@ -71,8 +71,19 @@ module Google
               prepare_dir
               puts "Beginning gemserver deployment..."
               Google::Cloud::Gemserver::Deployer.new.deploy
+              
+              # TODO: move below into Deployer.new.deploy
+              #path = "#{Configuration::SERVER_PATH}/app.yaml"
+              #flags = "-q --project #{@config[:proj_id]}"
+              #status = system "gcloud app deploy #{path} #{flags}"
+              #fail "Gemserver deployment failed. " unless status
+              
+              # keep here
+              #wait_until_server_accessible # TODO - handle gke and gae
+
               @config.save_to_cloud
               setup_default_keys
+              display_next_steps
             ensure
               cleanup
             end
@@ -81,9 +92,9 @@ module Google
           ##
           # Updates the gemserver on a Google Cloud Platform project by
           # redeploying it.
-          #
-          # @param [String] project The name of the project to update. Optional
-          def update project = nil
+          def update
+            return unless Configuration.deployed?
+
             puts "Updating gemserver..."
             if @config.metadata[:platform] == "gke"
               begin
@@ -99,10 +110,15 @@ module Google
 
           ##
           # Deletes a given gemserver and its Cloud SQL instance
-          def delete
+          #
+          # @param [String] proj_id The project ID of the project the gemserver
+          # was deployed to.
+          def delete proj_id
             puts "Deleting gemserver..."
             if @config.metadata[:platform] == "gae"
-              system "gcloud app services delete default"
+              puts "Deleting gemserver with parent project"
+              @config.delete_from_cloud
+              system "gcloud app services delete default --project #{proj_id}"
             else
               name = user_input "Enter the name of the container cluster"
               zone = user_input "Enter the zone of the cluster"
@@ -121,10 +137,15 @@ module Google
           # @private Creates a key with all permissions and sets it in the
           # necessary configurations (gem credentials and bundle config).
           def setup_default_keys
-            should_create = user_input "Would you like to setup a default key? [Y/n] (default yes)"
+            should_create = user_input("Would you like to setup a default " \
+              "key? [Y/n] (default yes)")
             return if should_create.downcase == "n"
             gemserver_url = remote
-            key = extract_key(Request.new(gemserver_url).create_key)
+            res = Request.new(gemserver_url).create_key
+            abort "Error generating key" unless res.code.to_i == 200
+            key = Backend::Key.send :parse_key, res.body
+            abort "Invalid key" unless valid_key? key
+            puts "Generated key: #{key}"
             set_bundle key, gemserver_url
             set_gem_credentials key
           end
@@ -146,25 +167,80 @@ module Google
           #
           # @param [String] key The key to be added to the credentials.
           def set_gem_credentials key
-            puts "Updating bundle config. Enter a name for your key (default "\
-              "is \"master-gemserver-key\""
-            key_name = sanitize_name(user_input)
+            key_name = sanitize_name(user_input("Updating bundle config. Enter"\
+              " a name for your key (default is \"master-gemserver-key\""))
             key_name = key_name.empty? == true ? Configuration::DEFAULT_KEY_NAME : key_name
             puts "Updating #{Configuration::CREDS_PATH}"
+
             FileUtils.touch Configuration::CREDS_PATH
-            run_cmd "echo \":#{key_name}: #{key}\" >> #{Configuration::CREDS_PATH}"
+            keys = YAML.load_file(Configuration::CREDS_PATH) || {}
+
+            if keys[key_name.to_sym].nil?
+              system "echo \":#{key_name}: #{key}\" >> #{Configuration::CREDS_PATH}"
+            else
+              puts "The key name \"#{key_name}\" already exists. Please update"\
+                " #{Configuration::CREDS_PATH} manually to replace the key or" \
+                " manually enter a different name into the file for your key:" \
+                " #{key}."
+            end
+          end
+
+          ##
+          # @private Checks if a key is valid by its length and value.
+          #
+          # @param [String] key The key to be validated.
+          #
+          # @return [Boolean]
+          def valid_key? key
+            size = key.size == Backend::Key::KEY_LENGTH
+            m_size = key.gsub(/[^0-9a-z]/i, "").size == Backend::Key::KEY_LENGTH
+            size && m_size
           end
 
           ##
           # @private Sanitizes a name by removing special symbols and ensuring
-          # it is alphanumeric.
+          # it is alphanumeric (and hyphens, underscores).
           #
           # @param [String] name The name to be sanitized.
           #
           # @return [String]
           def sanitize_name name
             name = name.chomp
-            name.gsub(/[^0-9a-z ]/i, "")
+            name.gsub(/[^0-9a-z\-\_]/i, "")
+          end
+
+          ##
+          # @private Outputs helpful information to the console indicating the
+          # URL the gemserver is running at and how to use the gemserver.
+          def display_next_steps
+            puts "\nThe gemserver has been deployed! It is running on #{remote}"
+            puts "To see the status of the gemserver, visit: \n" \
+              " #{remote}/health"
+            puts "\nTo see how to use your gemserver to push and download " \
+              "gems read https://github.com/GoogleCloudPlatform/google-cloud-" \
+              "gemserver/blob/master/docs/usage_example.md for some examples."
+            puts "\nFor general information, visit https://github.com/" \
+              "GoogleCloudPlatform/google-cloud-gemserver/blob/master/README.md"
+          end
+
+          ##
+          # @private Pings the gemserver until a timeout or the gemserver
+          # replies with a 200 response code.
+          #
+          # @param [Integer] timeout The length of time the gemserver is
+          # pinged. Optional.
+          def wait_until_server_accessible timeout = 60
+            puts "Waiting for the gemserver to be accessible..."
+            start_time = Time.now
+            loop do
+              if Time.now - start_time > timeout
+                fail "Could not establish a connection to the gemserver"
+              else
+                r = Request.new(nil, @config[:proj_id]).health
+                break if r.code.to_i == 200
+              end
+              sleep 5
+            end
           end
 
           ##
@@ -172,19 +248,9 @@ module Google
           #
           # @return [String]
           def remote
-            descrip = YAML.load(run_cmd "gcloud app describe")
+            flag = "--project #{@config[:proj_id]}"
+            descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
             descrip["defaultHostname"]
-          end
-
-          ##
-          # @private Extracts the key from the response.
-          #
-          # @param [String] response The response the key is extracted from.
-          #
-          # @return [String]
-          def extract_key response
-            idx = response.index ":"
-            response[idx + 1 .. response.size - 1].chomp
           end
 
           ##
@@ -250,10 +316,13 @@ module Google
           end
 
           ##
-          # @private Gets input from the user.
+          # @private Gets input from the user after displaying a message.
+          #
+          # @param [String] msg The message to be displayed.
           #
           # @return [String]
-          def user_input
+          def user_input msg
+            puts msg
             STDIN.gets.chomp
           end
 
