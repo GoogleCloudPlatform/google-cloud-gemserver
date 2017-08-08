@@ -116,50 +116,21 @@ describe Google::Cloud::Gemserver::Authentication do
   end
 
   describe "validate_token" do
-    it "sends a post request to the tokeninfo api with the token" do
-      auth = GCG::Authentication.new
-      path = "/oauth2/v1/tokeninfo?access_token=#{token[:access_token]}"
-
-      mock = Minitest::Mock.new
-      mock.expect :call, nil, [String, path, Net::HTTP::Post, token[:access_token]]
-
-      auth.stub :send_req, mock do
-        auth.stub :check_status, true do
-          auth.stub :token_can_edit?, nil do
-            auth.validate_token header
-            mock.verify
-          end
-        end
-      end
-    end
-
-    it "if the token is valid it implicitly checks if it has edit permissions" do
-      auth = GCG::Authentication.new
-      mock = Minitest::Mock.new
-      mock.expect :call, nil, [String]
-
-      auth.stub :send_req, nil do
-        auth.stub :check_status, true do
-          auth.stub :token_can_edit?, mock do
-            auth.validate_token header
-            mock.verify
-          end
-        end
-      end
-    end
-  end
-
-  describe ".token_can_edit?" do
     it "gets the latest app version" do
       auth = GCG::Authentication.new
       mock = Minitest::Mock.new
       mock.expect :call, nil, [String]
 
-      auth.stub :send_req, nil do
+      res_mock = Minitest::Mock.new
+      res_mock.expect :body, "{ \"name\": \"test\" }"
+
+      auth.stub :send_req, res_mock do
         auth.stub :check_status, true do
-          auth.stub :appengine_version, mock do
-            auth.send :token_can_edit?, token[:access_token]
-            mock.verify
+          auth.stub :wait_for_op, nil do
+            auth.stub :appengine_version, mock do
+              auth.send :validate_token, header
+              mock.verify
+            end
           end
         end
       end
@@ -180,9 +151,9 @@ describe Google::Cloud::Gemserver::Authentication do
       mock.expect :call, nil, [String, path, Net::HTTP::Patch, token[:access_token], params]
 
       auth.stub :send_req, mock do
-        auth.stub :check_status, true do
+        auth.stub :check_status, false do
           auth.stub :appengine_version, "123" do
-            auth.send :token_can_edit?, token[:access_token]
+            auth.send :validate_token, header
             assert_equal auth.appengine_version("abc"), params["split"]["allocations"].first[0]
             mock.verify
           end

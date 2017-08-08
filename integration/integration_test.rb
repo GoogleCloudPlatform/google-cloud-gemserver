@@ -15,6 +15,7 @@
 gem "minitest"
 require "minitest/autorun"
 require "minitest/rg"
+require "minitest/focus"
 require "google/cloud/gemserver"
 require "fileutils"
 
@@ -49,7 +50,7 @@ describe Google::Cloud::Gemserver do
     url = "http://#{HOST}/private"
     `RUBYGEMS_HOST=#{url} gem yank --key #{KEY} #{GEM} --version #{VER}`
   }
-  let(:range) { 15..GCG::Backend::Key::KEY_LENGTH }
+  let(:range) { 15..15+GCG::Backend::Key::KEY_LENGTH }
 
   after(:all) do
     reset
@@ -85,22 +86,22 @@ describe Google::Cloud::Gemserver do
     # response format => Generated key: KEY
     out = `google-cloud-gemserver create-key -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete-key -k #{out[range]} -r #{HOST}`
+    `google-cloud-gemserver delete-key -k #{out[range].chomp} -r #{HOST}`
     out = `google-cloud-gemserver create-key -p both -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete-key -k #{out[range]} -r #{HOST}`
+    `google-cloud-gemserver delete-key -k #{out[range].chomp} -r #{HOST}`
     out = `google-cloud-gemserver create-key -p write -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete-key -k #{out[range]} -r #{HOST}`
+    `google-cloud-gemserver delete-key -k #{out[range].chomp} -r #{HOST}`
     out = `google-cloud-gemserver create-key -p read -r #{HOST}`
     assert out.size > 16
-    `google-cloud-gemserver delete-key -k #{out[range]} -r #{HOST}`
+    `google-cloud-gemserver delete-key -k #{out[range].chomp} -r #{HOST}`
   end
 
   it "can delete a gemserver key" do
     raw = `google-cloud-gemserver create-key -r #{HOST}`
     refute raw.include? "Internal server error"
-    out = `google-cloud-gemserver delete-key -k #{raw[range]} -r #{HOST}`
+    out = `google-cloud-gemserver delete-key -k #{raw[range].chomp} -r #{HOST}`
     assert out.include?("success")
   end
 end

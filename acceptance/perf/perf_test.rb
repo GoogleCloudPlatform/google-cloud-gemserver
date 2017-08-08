@@ -58,7 +58,7 @@ describe Google::Cloud::Gemserver do
     `RUBYGEMS_HOST=#{url} gem yank --key #{KEY} #{GEM} --version #{VER}`
   }
 
-  let(:range) { 15..GCG::Backend::Key::KEY_LENGTH }
+  let(:range) { 15..15+GCG::Backend::Key::KEY_LENGTH }
 
   after(:all) do
     reset
@@ -94,7 +94,7 @@ describe Google::Cloud::Gemserver do
 
   it "can delete a gemserver key" do
     raw = `google-cloud-gemserver create-key -r #{HOST}`
-    key = raw[range]
+    key = raw[range].chomp
     Benchmark.bm(7) do |x|
       x.report("delete-key: "){ `google-cloud-gemserver delete-key -k #{key} -r #{HOST}` }
     end

@@ -14,7 +14,6 @@
 
 require "google/cloud/gemserver"
 require "json"
-require "securerandom"
 require "googleauth"
 require "net/http"
 require "uri"
@@ -73,26 +72,6 @@ module Google
         end
 
         ##
-        # Uses the tokeninfo API to validate the given access token.
-        #
-        # @param [String] auth_header The authorization header containing the
-        # token, e.g. "Bearer [TOKEN]".
-        #
-        # @return [Boolean]
-        def validate_token auth_header
-          token = auth_header.split.drop(1)[0]
-          apis_url = "https://www.googleapis.com"
-          tokeninfo_endpoint = "/oauth2/v1/tokeninfo?access_token=#{token}"
-          res = send_req apis_url, tokeninfo_endpoint, Net::HTTP::Post, token
-
-          return false unless check_status(res)
-
-          token_can_edit? token
-        end
-
-        private
-
-        ##
         # @private Implicitly checks if the account that generated the token
         # has edit permissions on the Google Cloud Platform project by issuing
         # a redundant update to the project (update to original settings).
@@ -100,7 +79,9 @@ module Google
         # @param [String] The authentication token generated from gcloud.
         #
         # @return [Boolean]
-        def token_can_edit? token
+        def validate_token auth_header
+          token = auth_header.split.drop(1)[0]
+
           appengine_url = "https://appengine.googleapis.com"
           endpoint = "/v1/apps/#{@proj}/services/default?updateMask=split"
           version = appengine_version token
@@ -112,8 +93,16 @@ module Google
             }
           }
           res = send_req appengine_url, endpoint, Net::HTTP::Patch, token, split
-          check_status res
+          if check_status(res)
+            op = JSON.parse(res.body)["name"]
+            wait_for_op appengine_url, "/v1/#{op}", token
+            true
+          else
+            false
+          end
         end
+
+        private
 
         ##
         # @private Fetches the latest version of the deployed Google App Engine
@@ -129,7 +118,7 @@ module Google
 
           fail "Unauthorized" unless check_status(res)
 
-          eval(res.body)[:split][:allocations].first[0]
+          JSON.parse(res.body)["split"]["allocations"].first[0]
         end
 
         ##
@@ -149,9 +138,8 @@ module Google
         def send_req dom, path, type, token, params = nil
           uri = URI.parse dom
           http = Net::HTTP.new uri.host, uri.port
-          if dom.include? "https"
-            http.use_ssl = true
-          end
+          http.use_ssl = true if dom.include? "https"
+
           req = type.new path
           req["Authorization"] = Signet::OAuth2.generate_bearer_authorization_header token
           unless type == Net::HTTP::Get
@@ -161,6 +149,32 @@ module Google
             end
           end
           http.request req
+        end
+
+        ##
+        # @private Waits for a project update operation to complete.
+        #
+        # @param [String] dom The domain and protocol of the request.
+        #
+        # @param [String] path The path of the request containing the operation
+        # ID.
+        #
+        # @param [String] token The authorization token in the request.
+        #
+        # @param [Integer] timeout The length of time the operation is polled.
+        def wait_for_op dom, path, token, timeout = 60
+          start = Time.now
+          loop do
+            if Time.now - start > timeout
+              fail "Operation at #{path} failed to complete in time"
+            else
+              res = send_req dom, path, Net::HTTP::Get, token
+              if JSON.parse(res.body)["done"] == true
+                break
+              end
+              sleep 1
+            end
+          end
         end
 
         ##
