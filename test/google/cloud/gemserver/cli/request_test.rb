@@ -74,7 +74,7 @@ describe Google::Cloud::Gemserver::CLI::Request do
       mock.expect :access_token, token
 
       http_mock = Minitest::Mock.new
-      http_mock.expect :initialize_http_header, nil, [Hash]
+      http_mock.expect :[]=, nil, [String, String]
 
       GCG::Authentication.stub :new, mock do
         req.http.stub :request, nil do

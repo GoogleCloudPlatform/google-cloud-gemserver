@@ -117,7 +117,7 @@ module Google
             auth = Google::Cloud::Gemserver::Authentication.new
             t = auth.access_token["access_token"]
             req = type.new endpoint
-            req.initialize_http_header({"GEMSERVER-CREDENTIALS": t})
+            req["Authorization"] = Signet::OAuth2.generate_bearer_authorization_header(t)
             if type != Net::HTTP::Get
               req.set_form_data(params) if params
             end

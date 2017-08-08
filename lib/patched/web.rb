@@ -23,7 +23,7 @@ Gemstash::Web.class_eval do
   # gems, cached gems, gemserver creation time, etc.
   post "/api/v1/stats" do
     auth = Google::Cloud::Gemserver::Authentication.new
-    if auth.validate_token request.env["HTTP_GEMSERVER_CREDENTIALS"]
+    if auth.validate_token request.env["HTTP_AUTHORIZATION"]
       content_type "application/json;charset=UTF-8"
       Google::Cloud::Gemserver::Backend::Stats.new.run
     else
@@ -36,7 +36,7 @@ Gemstash::Web.class_eval do
   # with given permissions. By default, a key with all permissions is created.
   post "/api/v1/key" do
     auth = Google::Cloud::Gemserver::Authentication.new
-    if auth.validate_token request.env["HTTP_GEMSERVER_CREDENTIALS"]
+    if auth.validate_token request.env["HTTP_AUTHORIZATION"]
       key = Google::Cloud::Gemserver::Backend::Key.create_key params["permissions"]
       content_type "application/json;charset=UTF-8"
       "Generated key: #{key}"
@@ -49,7 +49,7 @@ Gemstash::Web.class_eval do
   # Deletes a key.
   put "/api/v1/key" do
     auth = Google::Cloud::Gemserver::Authentication.new
-    if auth.validate_token request.env["HTTP_GEMSERVER_CREDENTIALS"]
+    if auth.validate_token request.env["HTTP_AUTHORIZATION"]
       res = Google::Cloud::Gemserver::Backend::Key.delete_key params["key"]
       content_type "application/json;charset=UTF-8"
       if res

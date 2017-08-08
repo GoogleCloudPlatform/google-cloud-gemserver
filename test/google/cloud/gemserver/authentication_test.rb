@@ -25,6 +25,7 @@ describe Google::Cloud::Gemserver::Authentication do
   let(:owners) { ["serviceaccount:owner_a", "user:owner_b"] }
   let(:editors) { ["serviceaccount:editor_a", "user:editor_b"] }
   let(:token) { { "access_token": "test-token" } }
+  let(:header) { "Bearer #{token[:access_token]}" }
 
   describe ".can_modify?" do
     it "returns true iff the logged in user is the project owner" do
@@ -95,7 +96,7 @@ describe Google::Cloud::Gemserver::Authentication do
       ENV["GOOGLE_APPLICATION_CREDENTIALS"] = "test"
 
       auth.stub :can_modify?, true do
-        Google::Auth::ServiceAccountCredentials.stub :make_creds, mock do
+        Google::Auth.stub :get_application_default, mock do
           t = auth.access_token
           assert_equal t, token
           mock.verify
@@ -117,18 +118,75 @@ describe Google::Cloud::Gemserver::Authentication do
   describe "validate_token" do
     it "sends a post request to the tokeninfo api with the token" do
       auth = GCG::Authentication.new
+      path = "/oauth2/v1/tokeninfo?access_token=#{token[:access_token]}"
 
-      res_mock = Minitest::Mock.new
-      res_mock.expect :code, "200"
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String, path, Net::HTTP::Post, token[:access_token]]
 
-      http_mock = Minitest::Mock.new
-      http_mock.expect :request, res_mock, [Net::HTTP::Post]
-      http_mock.expect :use_ssl=, true, [true]
+      auth.stub :send_req, mock do
+        auth.stub :check_status, true do
+          auth.stub :token_can_edit?, nil do
+            auth.validate_token header
+            mock.verify
+          end
+        end
+      end
+    end
 
-      Net::HTTP.stub :new, http_mock do
-        auth.validate_token token["access_token"]
-        http_mock.verify
-        res_mock.verify
+    it "if the token is valid it implicitly checks if it has edit permissions" do
+      auth = GCG::Authentication.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String]
+
+      auth.stub :send_req, nil do
+        auth.stub :check_status, true do
+          auth.stub :token_can_edit?, mock do
+            auth.validate_token header
+            mock.verify
+          end
+        end
+      end
+    end
+  end
+
+  describe ".token_can_edit?" do
+    it "gets the latest app version" do
+      auth = GCG::Authentication.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String]
+
+      auth.stub :send_req, nil do
+        auth.stub :check_status, true do
+          auth.stub :appengine_version, mock do
+            auth.send :token_can_edit?, token[:access_token]
+            mock.verify
+          end
+        end
+      end
+    end
+
+    it "performs a redundant project update" do
+      auth = GCG::Authentication.new
+      path = "/v1/apps/#{auth.proj}/services/default?updateMask=split"
+      params = {
+        "split" => {
+          "allocations" => {
+            "123" => 1
+          }
+        }
+      }
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String, path, Net::HTTP::Patch, token[:access_token], params]
+
+      auth.stub :send_req, mock do
+        auth.stub :check_status, true do
+          auth.stub :appengine_version, "123" do
+            auth.send :token_can_edit?, token[:access_token]
+            assert_equal auth.appengine_version("abc"), params["split"]["allocations"].first[0]
+            mock.verify
+          end
+        end
       end
     end
   end
