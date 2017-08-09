@@ -19,11 +19,11 @@ require "minitest/focus"
 require "google/cloud/gemserver"
 require "fileutils"
 
-HOST = ENV["host"]
+HOST = ENV["host"].freeze
 GEM = "private-test-gem".freeze
 VER  = "0.1.0".freeze
 GEM_PATH = "integration/#{GEM}-#{VER}.gem".freeze
-KEY = ENV["key"]
+KEY = ENV["key"].freeze
 GCG = Google::Cloud::Gemserver
 
 describe Google::Cloud::Gemserver do

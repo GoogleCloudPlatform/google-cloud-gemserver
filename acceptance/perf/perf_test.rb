@@ -16,16 +16,17 @@ require "helper"
 require "fileutils"
 require "benchmark"
 
-HOST = ENV["host"]
+HOST = ENV["host"].freeze
 GEM = "google-cloud-storage".freeze
 VER  = "1.1.0".freeze
 GEM_PATH = "integration/#{GEM}-#{VER}.gem".freeze
-KEY = ENV["key"]
+KEY = ENV["key"].freeze
 
 describe Google::Cloud::Gemserver do
   let(:gemserver_gemfile) {
     gemfile = "source \"http://#{HOST}/private\" do\n" \
       "gem \"#{GEM}\"\nend"
+    FileUtils.mkpath "integration/gem_install"
     File.open("integration/gem_install/Gemfile", "w") do |f|
       f.write gemfile
     end
@@ -34,6 +35,7 @@ describe Google::Cloud::Gemserver do
   let(:rubygems_gemfile) {
     gemfile = "source \"http://rubygems.org\" do\n" \
       "gem \"#{GEM}\"\nend"
+    FileUtils.mkpath "integration/gem_install"
     File.open("integration/gem_install/Gemfile", "w") do |f|
       f.write gemfile
     end
