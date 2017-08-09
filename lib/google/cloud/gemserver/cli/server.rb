@@ -66,14 +66,7 @@ module Google
           def deploy
             begin
               return start if ["test", "dev"].include? ENV["APP_ENV"]
-              prepare_dir
-              puts "Beginning gemserver deployment..."
-              path = "#{Configuration::SERVER_PATH}/app.yaml"
-              flags = "-q --project #{@config[:proj_id]}"
-              status = system "gcloud app deploy #{path} #{flags}"
-              fail "Gemserver deployment failed. " unless status
-              wait_until_server_accessible
-              @config.save_to_cloud
+              deploy_to_gae
               setup_default_keys
               display_next_steps
             ensure
@@ -87,7 +80,7 @@ module Google
           def update
             return unless Configuration.deployed?
             puts "Updating gemserver..."
-            deploy
+            deploy_to_gae
           end
 
           ##
@@ -96,12 +89,42 @@ module Google
           # @param [String] proj_id The project ID of the project the gemserver
           # was deployed to.
           def delete proj_id
-            puts "Deleting gemserver with parent project"
-            @config.delete_from_cloud
-            run_cmd "gcloud projects delete #{proj_id}"
+            full_delete = user_input("This will delete the entire Google Cloud"\
+               " Platform project #{proj_id}. Continue"\
+               " deletion? (Y|n, default no)").downcase
+            if full_delete == "y"
+              puts "Deleting gemserver with parent project"
+              @config.delete_from_cloud
+              run_cmd "gcloud projects delete #{proj_id}"
+            else
+              inst = @config.app["beta_settings"]["cloud_sql_instances"]
+                .split(":").pop
+              puts "Deleting child Cloud SQL instance #{inst}..."
+              system "gcloud beta sql instances delete #{inst}"
+              puts "The Cloud SQL instance has been deleted. Visit:\n "\
+                "https://console.cloud.google.com/appengine/settings?project="\
+                "#{proj_id} and click \"Disable Application\" to delete the "\
+                "Google App Engine application the gemserver was deployed to."
+            end
           end
 
           private
+
+          ##
+          # Deploys the gemserver to Google App Engine and uploads the
+          # configuration file used by the gemserver to Google Cloud Storage
+          # for later convenience.
+          def deploy_to_gae
+            puts "Beginning gemserver deployment..."
+            prepare_dir
+            path = "#{Configuration::SERVER_PATH}/app.yaml"
+            flags = "-q --project #{@config[:proj_id]}"
+            status = system "gcloud app deploy #{path} #{flags}"
+            fail "Gemserver deployment failed. " unless status
+            wait_until_server_accessible
+            @config.save_to_cloud
+            puts "\nThe gemserver has been deployed! It is running on #{remote}"
+          end
 
           ##
           # @private Creates a key with all permissions and sets it in the
@@ -183,8 +206,7 @@ module Google
           # @private Outputs helpful information to the console indicating the
           # URL the gemserver is running at and how to use the gemserver.
           def display_next_steps
-            puts "\nThe gemserver has been deployed! It is running on #{remote}"
-            puts "To see the status of the gemserver, visit: \n" \
+            puts "\nTo see the status of the gemserver, visit: \n" \
               " #{remote}/health"
             puts "\nTo see how to use your gemserver to push and download " \
               "gems read https://github.com/GoogleCloudPlatform/google-cloud-" \
