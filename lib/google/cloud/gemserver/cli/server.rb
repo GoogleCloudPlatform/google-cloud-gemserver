@@ -68,7 +68,6 @@ module Google
               return start if ["test", "dev"].include? ENV["APP_ENV"]
               deploy_to_gae
               setup_default_keys
-              display_next_steps
             ensure
               cleanup
             end
@@ -89,18 +88,23 @@ module Google
           # @param [String] proj_id The project ID of the project the gemserver
           # was deployed to.
           def delete proj_id
+            return unless Configuration.deployed?
             full_delete = user_input("This will delete the entire Google Cloud"\
                " Platform project #{proj_id}. Continue"\
-               " deletion? (Y|n, default no)").downcase
+               " deletion? (Y|n, default n) If no, all relevant resources will"\
+               " be deleted besides the parent GCP project.").downcase
             if full_delete == "y"
               puts "Deleting gemserver with parent project"
-              @config.delete_from_cloud
-              run_cmd "gcloud projects delete #{proj_id}"
+              system "gcloud projects delete #{proj_id}"
             else
+              @config.delete_from_cloud
+              del_gcs_files
               inst = @config.app["beta_settings"]["cloud_sql_instances"]
                 .split(":").pop
               puts "Deleting child Cloud SQL instance #{inst}..."
-              system "gcloud beta sql instances delete #{inst}"
+              params = "delete #{inst} --project #{proj_id}"
+              status = system "gcloud beta sql instances #{params}"
+              fail "Unable to delete instance" unless status
               puts "The Cloud SQL instance has been deleted. Visit:\n "\
                 "https://console.cloud.google.com/appengine/settings?project="\
                 "#{proj_id} and click \"Disable Application\" to delete the "\
@@ -123,7 +127,15 @@ module Google
             fail "Gemserver deployment failed. " unless status
             wait_until_server_accessible
             @config.save_to_cloud
-            puts "\nThe gemserver has been deployed! It is running on #{remote}"
+            display_next_steps
+          end
+
+          ##
+          # @private Deletes all gem data files on Google Cloud Storage.
+          def del_gcs_files
+            puts "Deleting all gem data on Google Cloud Storage..."
+            gem_files = GCS.files Configuration::GEMSTASH_DIR
+            gem_files.each { |f| f.delete }
           end
 
           ##
@@ -206,6 +218,7 @@ module Google
           # @private Outputs helpful information to the console indicating the
           # URL the gemserver is running at and how to use the gemserver.
           def display_next_steps
+            puts "\nThe gemserver has been deployed! It is running on #{remote}"
             puts "\nTo see the status of the gemserver, visit: \n" \
               " #{remote}/health"
             puts "\nTo see how to use your gemserver to push and download " \
