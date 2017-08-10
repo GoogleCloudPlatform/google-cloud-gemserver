@@ -66,16 +66,8 @@ module Google
           def deploy
             begin
               return start if ["test", "dev"].include? ENV["APP_ENV"]
-              prepare_dir
-              puts "Beginning gemserver deployment..."
-              path = "#{Configuration::SERVER_PATH}/app.yaml"
-              flags = "-q --project #{@config[:proj_id]}"
-              status = system "gcloud app deploy #{path} #{flags}"
-              fail "Gemserver deployment failed. " unless status
-              wait_until_server_accessible
-              @config.save_to_cloud
+              deploy_to_gae
               setup_default_keys
-              display_next_steps
             ensure
               cleanup
             end
@@ -87,7 +79,7 @@ module Google
           def update
             return unless Configuration.deployed?
             puts "Updating gemserver..."
-            deploy
+            deploy_to_gae
           end
 
           ##
@@ -96,12 +88,55 @@ module Google
           # @param [String] proj_id The project ID of the project the gemserver
           # was deployed to.
           def delete proj_id
-            puts "Deleting gemserver with parent project"
-            @config.delete_from_cloud
-            run_cmd "gcloud projects delete #{proj_id}"
+            return unless Configuration.deployed?
+            full_delete = user_input("This will delete the entire Google Cloud"\
+               " Platform project #{proj_id}. Continue"\
+               " deletion? (Y|n, default n) If no, all relevant resources will"\
+               " be deleted besides the parent GCP project.").downcase
+            if full_delete == "y"
+              puts "Deleting gemserver with parent project"
+              system "gcloud projects delete #{proj_id}"
+            else
+              @config.delete_from_cloud
+              del_gcs_files
+              inst = @config.app["beta_settings"]["cloud_sql_instances"]
+                .split(":").pop
+              puts "Deleting child Cloud SQL instance #{inst}..."
+              params = "delete #{inst} --project #{proj_id}"
+              status = system "gcloud beta sql instances #{params}"
+              fail "Unable to delete instance" unless status
+              puts "The Cloud SQL instance has been deleted. Visit:\n "\
+                "https://console.cloud.google.com/appengine/settings?project="\
+                "#{proj_id} and click \"Disable Application\" to delete the "\
+                "Google App Engine application the gemserver was deployed to."
+            end
           end
 
           private
+
+          ##
+          # Deploys the gemserver to Google App Engine and uploads the
+          # configuration file used by the gemserver to Google Cloud Storage
+          # for later convenience.
+          def deploy_to_gae
+            puts "Beginning gemserver deployment..."
+            prepare_dir
+            path = "#{Configuration::SERVER_PATH}/app.yaml"
+            flags = "-q --project #{@config[:proj_id]}"
+            status = system "gcloud app deploy #{path} #{flags}"
+            fail "Gemserver deployment failed. " unless status
+            wait_until_server_accessible
+            @config.save_to_cloud
+            display_next_steps
+          end
+
+          ##
+          # @private Deletes all gem data files on Google Cloud Storage.
+          def del_gcs_files
+            puts "Deleting all gem data on Google Cloud Storage..."
+            gem_files = GCS.files Configuration::GEMSTASH_DIR
+            gem_files.each { |f| f.delete }
+          end
 
           ##
           # @private Creates a key with all permissions and sets it in the
@@ -184,7 +219,7 @@ module Google
           # URL the gemserver is running at and how to use the gemserver.
           def display_next_steps
             puts "\nThe gemserver has been deployed! It is running on #{remote}"
-            puts "To see the status of the gemserver, visit: \n" \
+            puts "\nTo see the status of the gemserver, visit: \n" \
               " #{remote}/health"
             puts "\nTo see how to use your gemserver to push and download " \
               "gems read https://github.com/GoogleCloudPlatform/google-cloud-" \

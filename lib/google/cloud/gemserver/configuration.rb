@@ -196,6 +196,10 @@ module Google
         DEFAULT_KEY_NAME = "master-gemserver-key".freeze
 
         ##
+        # @private The path gem data is stored
+        GEMSTASH_DIR = "/root/.gemstash".freeze
+
+        ##
         # The configuration used by the gemserver.
         # @return [Hash]
         attr_accessor :config

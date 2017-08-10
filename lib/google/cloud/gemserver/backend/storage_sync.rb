@@ -89,7 +89,7 @@ module Google
           # @return [String]
           def gemstash_dir
             if ENV["APP_ENV"] == "production"
-              "/root/.gemstash"
+              Configuration::GEMSTASH_DIR
             else
               File.expand_path("~/.gemstash")
             end
