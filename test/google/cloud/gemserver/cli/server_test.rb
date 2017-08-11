@@ -46,9 +46,47 @@ describe Google::Cloud::Gemserver::CLI::Server do
   describe ".deploy" do
     # TODO: resolve below conflict when cli/server.rb finalized
     '''
-#<<<<<<< add-gke-option
+#<<<<<< add-gke-option
     it "calls Deployer" do
-#=======
+#======
+    it "calls deploy_to_gae" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      ENV["APP_ENV"] = "production"
+      server.stub :deploy_to_gae, mock do
+        server.stub :setup_default_keys, nil do
+          server.stub :display_next_steps, nil do
+            server.deploy
+            mock.verify
+          end
+        end
+      end
+      ENV["APP_ENV"] = "test"
+    end
+
+    it "sets up default keys" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      ENV["APP_ENV"] = "production"
+      server.stub :deploy_to_gae, nil do
+        server.stub :setup_default_keys, mock do
+          server.stub :display_next_steps, nil do
+            server.deploy
+            mock.verify
+          end
+        end
+      end
+      ENV["APP_ENV"] = "test"
+    end
+  end
+
+  describe ".deploy_to_gae" do
     it "calls prepare_dir" do
       ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
@@ -61,8 +99,10 @@ describe Google::Cloud::Gemserver::CLI::Server do
             server.stub :display_next_steps, nil do
               server.stub :prepare_dir, mock do
                 server.stub :wait_until_server_accessible, nil do
-                  server.deploy
-                  mock.verify
+                  server.stub :remote, nil do
+                    server.send :deploy_to_gae
+                    mock.verify
+                  end
                 end
               end
             end
@@ -74,10 +114,10 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
 
     it "calls gcloud app deploy" do
-#>>>>>>> master
+#>>>>>> master
       server = GCG::CLI::Server.new
       ENV["APP_ENV"] = "production"
-#<<<<<<< add-gke-option
+#<<<<<< add-gke-option
       mock = Minitest::Mock.new
       mock.expect :deploy, :nil
 
@@ -88,7 +128,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
               server.stub :setup_default_keys, nil do
                 server.deploy
                 mock.verify
-#=======
+#======
       mock_server = Minitest::Mock.new
       mock_server.expect :call, true, ["gcloud app deploy #{app_path} -q --project #{server.config[:proj_id]}"]
 
@@ -98,8 +138,10 @@ describe Google::Cloud::Gemserver::CLI::Server do
             server.stub :setup_default_keys, nil do
               server.stub :display_next_steps, nil do
                 server.stub :wait_until_server_accessible, nil do
-                  server.deploy
-                  mock_server.verify
+                  server.stub :remote, nil do
+                    server.send :deploy_to_gae
+                    mock_server.verify
+                  end
                 end
               end
             end
@@ -121,8 +163,10 @@ describe Google::Cloud::Gemserver::CLI::Server do
             server.stub :setup_default_keys, nil do
               server.stub :display_next_steps, nil do
                 server.stub :wait_until_server_accessible, mock do
-                  server.deploy
-                  mock.verify
+                  server.stub :remote, nil do
+                    server.send :deploy_to_gae
+                    mock.verify
+                  end
                 end
               end
             end
@@ -145,10 +189,12 @@ describe Google::Cloud::Gemserver::CLI::Server do
             server.stub :display_next_steps, nil do
               server.stub :wait_until_server_accessible, nil do
                 server.config.stub :save_to_cloud, mock do
-                  server.deploy
-                  mock.verify
+                  server.stub :remote, nil do
+                    server.send :deploy_to_gae
+                    mock.verify
+                  end
                 end
-#>>>>>>> master
+#>>>>>> master
               end
             end
           end
@@ -159,7 +205,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
     '''
 
-    it "calls setup_default_keys" do
+    it "displays helpful tips after deploying" do
       ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
       mock = Minitest::Mock.new
@@ -167,11 +213,11 @@ describe Google::Cloud::Gemserver::CLI::Server do
 
       server.stub :prepare_dir, nil do
         server.stub :system, true do
-          server.config.stub :save_to_cloud, nil do
-            server.stub :display_next_steps, nil do
+          server.stub :setup_default_keys, nil do
+            server.stub :display_next_steps, mock do
               server.stub :wait_until_server_accessible, nil do
-                server.stub :setup_default_keys, mock do
-                  server.deploy
+                server.config.stub :save_to_cloud, nil do
+                  server.send :deploy_to_gae
                   mock.verify
                 end
               end
@@ -179,28 +225,8 @@ describe Google::Cloud::Gemserver::CLI::Server do
           end
         end
       end
-    end
 
-    it "calls display_next_steps" do
-      ENV["APP_ENV"] = "production"
-      server = GCG::CLI::Server.new
-      mock = Minitest::Mock.new
-      mock.expect :call, nil
-
-      server.stub :prepare_dir, nil do
-        server.stub :system, true do
-          server.config.stub :save_to_cloud, nil do
-            server.stub :setup_default_keys, nil do
-              server.stub :wait_until_server_accessible, nil do
-                server.stub :display_next_steps, mock do
-                  server.deploy
-                  mock.verify
-                end
-              end
-            end
-          end
-        end
-      end
+      ENV["APP_ENV"] = "test"
     end
   end
 
@@ -211,6 +237,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock_server.expect :call, nil
 
       GCG::Configuration.stub :deployed?, true do
+#<<<<<< add-gke-option
         server.config.stub :metadata, gae do
           server.stub :deploy, mock_server do
             server.update
@@ -231,21 +258,29 @@ describe Google::Cloud::Gemserver::CLI::Server do
             server.update
             mock.verify
           end
+#======
+        server.stub :deploy_to_gae, mock_server do
+          server.update
+          mock_server.verify
+#>>>>>> master
         end
       end
     end
   end
 
   describe ".delete" do
+#<<<<<< add-gke-option
     it "calls gcloud app services delete default for gae" do
+#======
+    it "calls gcloud projects delete on a full delete" do
+#>>>>>> master
       server = GCG::CLI::Server.new
 
-      config_mock = Minitest::Mock.new
-      config_mock.expect :delete_from_cloud, nil
       mock_server = Minitest::Mock.new
       mock_server.expect :call, nil, ["gcloud app services delete default"]
       mock_server.expect :call, nil, [String]
 
+#<<<<<< add-gke-option
       server.config.stub :metadata, gae do
         server.stub :system, mock_server do
           server.delete
@@ -268,6 +303,101 @@ describe Google::Cloud::Gemserver::CLI::Server do
           server.stub :system, mock do
             server.delete
             mock.verify
+#======
+      GCG::Configuration.stub :deployed?, true do
+        server.stub :user_input, "y" do
+          server.stub :system, mock_server do
+            server.delete "bob"
+            mock_server.verify
+#>>>>>> master
+          end
+        end
+      end
+    end
+
+    it "prompts the user to manually delete if not a full project deletion" do
+      server = GCG::CLI::Server.new
+      link = "https://console.cloud.google.com/appengine/settings?project=bob"
+
+      GCG::Configuration.stub :deployed?, true do
+        server.stub :user_input, "n" do
+          server.config.stub :delete_from_cloud, nil do
+            server.stub :del_gcs_files, nil do
+              server.stub :system, true do
+                out = capture_io { server.delete "bob" }[0]
+                assert out.include? link
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "deletes the Cloud SQL instance if not a full project deletion" do
+      server = GCG::CLI::Server.new
+      inst_name = "test"
+      inst_connection = "/cloudsql/a:b:#{inst_name}"
+      app = {
+        "beta_settings" => {
+          "cloud_sql_instances" => inst_connection
+        }
+      }
+      params = "delete #{inst_name} --project bob"
+
+      mock = Minitest::Mock.new
+      mock.expect :call, true, ["gcloud beta sql instances #{params}"]
+
+      GCG::Configuration.stub :deployed?, true do
+        server.config.stub :app, app do
+          server.config.stub :delete_from_cloud, nil do
+            server.stub :user_input, "n" do
+              server.stub :del_gcs_files, nil do
+                server.stub :system, mock do
+                  server.delete "bob"
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "deletes the config file from GCS if not full project deletion" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      GCG::Configuration.stub :deployed?, true do
+        server.stub :user_input, "n" do
+          server.stub :system, true do
+            server.stub :del_gcs_files, nil do
+              server.config.stub :delete_from_cloud, mock do
+                server.delete "bob"
+                mock.verify
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "deletes gem data files on GCS if not full project deletion" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      GCG::Configuration.stub :deployed?, true do
+        server.stub :user_input, "n" do
+          server.stub :system, true do
+            server.stub :del_gcs_files, mock do
+              server.config.stub :delete_from_cloud, nil do
+                server.delete "bob"
+                mock.verify
+              end
+            end
           end
         end
       end
