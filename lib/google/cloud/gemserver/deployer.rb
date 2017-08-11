@@ -15,6 +15,7 @@
 require "google/cloud/gemserver"
 require "fileutils"
 require "open3"
+require "time"
 
 module Google
   module Cloud
@@ -66,7 +67,8 @@ module Google
             push_docker_image location do
               update_gke_deploy_config location
               puts "Setting service to use new image..."
-              system "kubectl set image deployments/#{IMAGE_NAME} #{IMAGE_NAME}=#{location}"
+              system "kubectl apply -f #{Configuration::SERVER_PATH}/deployment.yaml"
+              puts `kubectl rollout status deployment #{IMAGE_NAME}`
               wait_for_pods
             end
           end
@@ -86,7 +88,10 @@ module Google
         ##
         # @private Deploys the gemserver to Google App Engine Flex.
         def deploy_to_gae
-          system "gcloud app deploy #{Configuration::SERVER_PATH}/app.yaml -q"
+          flags = "-q --project #{@config[:proj_id]}"
+          path = "#{Configuration::SERVER_PATH}/app.yaml"
+          status = system "gcloud app deploy #{path} #{flags}"
+          fail "Gemserver deployment to GAE failed". unless status
         end
 
         ##
@@ -115,7 +120,9 @@ module Google
           deploy_file = "#{Configuration::SERVER_PATH}/deployment.yaml"
 
           puts "Creating deployment"
-          system "kubectl create -f #{deploy_file}"
+          status = system "kubectl create -f #{deploy_file} --save-config=true"
+
+          fail "Deployment to GKE failed!" unless status
 
           puts "Exposing nodes"
           system "kubectl expose deployment #{IMAGE_NAME} --type LoadBalancer --port 8080"
@@ -200,6 +207,9 @@ module Google
             "-credential_file=/secrets/cloudsql/credentials.json"
           ]
 
+          # metadata requires values to start/end with a letter
+          time = "time_#{Time.now.to_i}_end"
+
           if File.file? deploy_file
             puts "#{deploy_file} already exists. Skipping pod configuration."
           else
@@ -209,7 +219,8 @@ module Google
                   image_name: IMAGE_NAME,
                   image_location: image_location,
                   container_name: IMAGE_NAME,
-                  sql_proxy_command: command
+                  sql_proxy_command: command,
+                  timestamp: time
                 }
                 dest_file.write file_content
               end
@@ -225,6 +236,10 @@ module Google
         # @param [String] app_dir The directory the gemserver will be deployed
         # from.
         def update_gke_dockerfile app_dir
+          unless File.exist? ENV["GEMSERVER_CREDS"]
+            fail "Service account not found in GEMSERVER_CREDS"
+          end
+
           FileUtils.cp ENV["GEMSERVER_CREDS"], app_dir
           if File.file? "Dockerfile"
             puts "The Dockerfile file already exists."

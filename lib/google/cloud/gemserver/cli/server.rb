@@ -71,15 +71,8 @@ module Google
               prepare_dir
               puts "Beginning gemserver deployment..."
               Google::Cloud::Gemserver::Deployer.new.deploy
-              
-              # TODO: move below into Deployer.new.deploy
-              #path = "#{Configuration::SERVER_PATH}/app.yaml"
-              #flags = "-q --project #{@config[:proj_id]}"
-              #status = system "gcloud app deploy #{path} #{flags}"
-              #fail "Gemserver deployment failed. " unless status
-              
-              # keep here
-              #wait_until_server_accessible # TODO - handle gke and gae
+
+              wait_until_server_accessible
 
               @config.save_to_cloud
               setup_default_keys
@@ -93,7 +86,8 @@ module Google
           # Updates the gemserver on a Google Cloud Platform project by
           # redeploying it.
           def update
-            return unless Configuration.deployed?
+            # TOOD(arhamahmed): deployed? should check gae and gke deployment
+            #return unless Configuration.deployed?
 
             puts "Updating gemserver..."
             if @config.metadata[:platform] == "gke"
@@ -101,7 +95,7 @@ module Google
                 prepare_dir
                 Google::Cloud::Gemserver::Deployer.new.update_gke_deploy
               ensure
-                #cleanup
+                cleanup
               end
             else
               deploy
@@ -231,12 +225,19 @@ module Google
           # pinged. Optional.
           def wait_until_server_accessible timeout = 60
             puts "Waiting for the gemserver to be accessible..."
+            if config.metadata[:platform] == "gke"
+              info = run_cmd("kubectl get service #{Deployer::IMAGE_NAME}")
+              url = info.split("\n").drop(1)[0].split[2]
+            else
+              url = remote
+            end
             start_time = Time.now
             loop do
               if Time.now - start_time > timeout
                 fail "Could not establish a connection to the gemserver"
               else
-                r = Request.new(nil, @config[:proj_id]).health
+                next if url == "<pending>"
+                r = Request.new(url).health
                 break if r.code.to_i == 200
               end
               sleep 5

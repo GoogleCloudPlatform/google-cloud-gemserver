@@ -11,10 +11,12 @@ spec:
       labels:
         app: %{image_name}
         name: %{image_name}
+        timestamp: %{timestamp}
     spec:
       containers:
         - image: %{image_location}
           name: %{image_name}
+          imagePullPolicy: Always
           env:
             - name: DB_HOST
               value: 127.0.0.1

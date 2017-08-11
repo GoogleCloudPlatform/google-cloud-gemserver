@@ -99,7 +99,7 @@ module Google
           desc: "The platform to update the gemserver on (gae or gke)"
         def update
           Project.new.send :update_metadata, options[:platform]
-          Server.new.update options[:use_proj]
+          Server.new.update
         end
 
         ##

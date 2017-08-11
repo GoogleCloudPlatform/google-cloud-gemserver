@@ -160,7 +160,7 @@ module Google
               "enabled by visiting: https://console.developers.google.com"\
               "/apis/api/compute.googleapis.com/overview?project=#{@proj_name}"\
               " and clicking \"Enable\""
-            prompt user
+            prompt_user
           end
 
           ##
