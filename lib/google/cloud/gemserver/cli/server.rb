@@ -68,13 +68,8 @@ module Google
           def deploy
             return start if ["test", "dev"].include? ENV["APP_ENV"]
             begin
-              prepare_dir
               puts "Beginning gemserver deployment..."
-              Google::Cloud::Gemserver::Deployer.new.deploy
-
-              wait_until_server_accessible
-
-              @config.save_to_cloud
+              base_deploy
               setup_default_keys
             ensure
               cleanup
@@ -83,10 +78,11 @@ module Google
 
           ##
           # Updates the gemserver on a Google Cloud Platform project by
-          # redeploying it.
+          # redeploying it if Google App Engine is the target platform or by
+          # updating the container image if Google Container image is the target
+          # platform.
           def update
-            # TOOD(arhamahmed): deployed? should check gae and gke deployment
-            #return unless Configuration.deployed?
+            return unless @config.deployed?
 
             puts "Updating gemserver..."
 
@@ -98,7 +94,7 @@ module Google
                 cleanup
               end
             else
-              deploy_to_gae
+              base_deploy
             end
           end
 
@@ -108,9 +104,8 @@ module Google
           # @param [String] proj_id The project ID of the project the gemserver
           # was deployed to.
           def delete proj_id
+            return unless @config.deployed?
             if @config.metadata[:platform] == "gae"
-              # TODO(arhamahmed): fix .deployed?
-              #return unless Configuration.deployed?
               full_delete = user_input("This will delete the entire Google Cloud"\
                 " Platform project #{proj_id}. Continue"\
                 " deletion? (Y|n, default n) If no, all relevant resources will"\
@@ -131,9 +126,9 @@ module Google
               zone = user_input "Enter the zone of the cluster"
               system "kubectl delete service #{Deployer::IMAGE_NAME}"
               system "kubectl delete deployment #{Deployer::IMAGE_NAME}"
-              #system "gcloud container clusters delete #{name} -z #{zone}"
+              system "gcloud container clusters delete #{name} -z #{zone}"
             end
-            
+
             inst = @config.app["beta_settings"]["cloud_sql_instances"]
               .split(":").pop
             puts "Deleting child Cloud SQL instance #{inst}..."
@@ -145,16 +140,12 @@ module Google
           private
 
           ##
-          # Deploys the gemserver to Google App Engine and uploads the
-          # configuration file used by the gemserver to Google Cloud Storage
-          # for later convenience.
-          def deploy_to_gae
-            puts "Beginning gemserver deployment..."
+          # @private Deploys the gemserver to Google Cloud Platform, waits for
+          # it to be accessible, then saves its configuration and displays
+          # next steps.
+          def base_deploy
             prepare_dir
-            path = "#{Configuration::SERVER_PATH}/app.yaml"
-            flags = "-q --project #{@config[:proj_id]}"
-            status = system "gcloud app deploy #{path} #{flags}"
-            fail "Gemserver deployment failed. " unless status
+            Google::Cloud::Gemserver::Deployer.new.deploy
             wait_until_server_accessible
             @config.save_to_cloud
             display_next_steps
@@ -163,7 +154,7 @@ module Google
           ##
           # @private Deletes all gem data files on Google Cloud Storage.
           def del_gcs_files
-            # TODO(arhamahmed): differentiate between GAE/GKE gem files
+            # TODO: differentiate between GAE/GKE gem files, use gemstash's base_path option
             puts "Deleting all gem data on Google Cloud Storage..."
             gem_files = GCS.files Configuration::GEMSTASH_DIR
             gem_files.each { |f| f.delete }
@@ -265,24 +256,22 @@ module Google
           #
           # @param [Integer] timeout The length of time the gemserver is
           # pinged. Optional.
-          def wait_until_server_accessible timeout = 60
+          def wait_until_server_accessible timeout = 90
             puts "Waiting for the gemserver to be accessible..."
-            if config.metadata[:platform] == "gke"
-              info = run_cmd("kubectl get service #{Deployer::IMAGE_NAME}")
-              url = info.split("\n").drop(1)[0].split[2]
-            else
-              url = remote
-            end
             start_time = Time.now
+            url = remote
             loop do
               if Time.now - start_time > timeout
                 fail "Could not establish a connection to the gemserver"
               else
-                next if url == "<pending>"
+                if url == "<pending>"
+                  url = remote
+                  next
+                end
                 r = Request.new(url).health
                 break if r.code.to_i == 200
               end
-              sleep 5
+              sleep 2
             end
           end
 
@@ -291,9 +280,14 @@ module Google
           #
           # @return [String]
           def remote
-            flag = "--project #{@config[:proj_id]}"
-            descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
-            descrip["defaultHostname"]
+            if @config.metadata[:platform] == "gke"
+              info = run_cmd("kubectl get service #{Deployer::IMAGE_NAME}")
+              info.split("\n").drop(1)[0].split[2]
+            else
+              flag = "--project #{@config[:proj_id]}"
+              descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
+              descrip["defaultHostname"]
+            end
           end
 
           ##
@@ -339,8 +333,9 @@ module Google
             FileUtils.mkpath Configuration::SERVER_PATH
             FileUtils.cp_r "#{dir}/.", Configuration::SERVER_PATH
             FileUtils.cp @config.config_path, Configuration::SERVER_PATH
-            FileUtils.cp @config.app_path, Configuration::SERVER_PATH
             gemfile
+            return unless @config.metadata[:platform] == "gae"
+            FileUtils.cp @config.app_path, Configuration::SERVER_PATH
           end
 
           ##

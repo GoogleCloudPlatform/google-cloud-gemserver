@@ -154,7 +154,7 @@ module Google
         desc "config", "Displays the config the current deployed gemserver is"\
           " using (if one is running)"
         def config
-          Configuration.display_config
+          Configuration.new.display_config
         end
 
         ##

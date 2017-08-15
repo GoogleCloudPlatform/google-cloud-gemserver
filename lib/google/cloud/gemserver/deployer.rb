@@ -91,7 +91,7 @@ module Google
           flags = "-q --project #{@config[:proj_id]}"
           path = "#{Configuration::SERVER_PATH}/app.yaml"
           status = system "gcloud app deploy #{path} #{flags}"
-          fail "Gemserver deployment to GAE failed". unless status
+          fail "Gemserver deployment to GAE failed." unless status
         end
 
         ##
@@ -167,8 +167,6 @@ module Google
             puts "pushing #{IMAGE_NAME} to #{image_location}"
             system "gcloud docker -- push #{image_location}"
             yield image_location
-          ensure
-            system "gsutil rm -r gs://us.artifacts.#{@config[:proj_id]}.appspot.com/containers/repositories/library/#{IMAGE_NAME}/"
           end
         end
 

@@ -45,7 +45,8 @@ module Google
           # gemserver was deployed to. Optional.
           def initialize url = nil, proj_name = nil
             gemserver_url = url.nil? == true ? remote(proj_name) : url
-            @http = Net::HTTP.new gemserver_url
+            port = Configuration.new.metadata[:platform] == "gke"? 8080 : 80
+            @http = Net::HTTP.new gemserver_url, port
           end
 
           ##
