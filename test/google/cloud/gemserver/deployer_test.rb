@@ -46,22 +46,40 @@ describe Google::Cloud::Gemserver::Deployer do
     end
   end
 
+  describe ".latest_gae_deploy_version" do
+    it "calls gcloud app versions list --project PROJ" do
+    end
+  end
+
   describe ".deploy_to_gae" do
     it "calls gcloud app deploy" do
       dep = GCG::Deployer.new
       path = "#{GCG::Configuration::SERVER_PATH}/app.yaml"
+      flags = "-q --project test"
 
       mock = Minitest::Mock.new
-      mock.expect :call, nil, ["gcloud app deploy #{path} -q"]
+      mock.expect :call, true, ["gcloud app deploy #{path} #{flags}"]
+      config = Minitest::Mock.new
+      config.expect :call, "test", [:proj_id]
 
-      dep.stub :system, mock do
-        dep.send :deploy_to_gae
-        mock.verify
+      dep.config.stub :[], config do
+        dep.stub :system, mock do
+          dep.send :deploy_to_gae
+          mock.verify
+        end
       end
     end
   end
 
   describe ".deploy_to_gke" do
+    it "builds a docker image" do
+      # TODO
+    end
+
+    it "pushes a docker image to GCR" do
+      # TODO
+    end
+
     it "calls deploy_gke_image" do
       dep = GCG::Deployer.new
 
@@ -79,31 +97,13 @@ describe Google::Cloud::Gemserver::Deployer do
   end
 
   describe ".deploy_gke_image" do
-    it "calls update_gke_deploy_config" do
-      dep = GCG::Deployer.new
-
-      mock = Minitest::Mock.new
-      mock.expect :call, nil, [String]
-
-      dep.stub :system, nil do
-        dep.stub :create_cluster, nil do
-          dep.stub :wait_for_pods, nil do
-            dep.stub :update_gke_deploy_config, mock do
-              dep.send :deploy_gke_image, "test"
-              mock.verify
-            end
-          end
-        end
-      end
-    end
-
     it "calls create_cluster" do
       dep = GCG::Deployer.new
 
       mock = Minitest::Mock.new
       mock.expect :call, nil
 
-      dep.stub :system, nil do
+      dep.stub :system, true do
         dep.stub :update_gke_deploy_config, nil do
           dep.stub :wait_for_pods, nil do
             dep.stub :create_cluster, mock do
@@ -121,7 +121,7 @@ describe Google::Cloud::Gemserver::Deployer do
       name = GCG::Deployer::IMAGE_NAME
 
       mock = Minitest::Mock.new
-      mock.expect :call, nil, ["kubectl create -f #{file}"]
+      mock.expect :call, true, ["kubectl create -f #{file} --save-config=true"]
       mock.expect :call, nil, ["kubectl expose deployment #{name} --type LoadBalancer --port 8080"]
 
       dep.stub :update_gke_deploy_config, nil do
@@ -143,9 +143,37 @@ describe Google::Cloud::Gemserver::Deployer do
       mock.expect :call, nil
 
       dep.stub :update_gke_deploy_config, nil do
-        dep.stub :system, nil do
+        dep.stub :system, true do
           dep.stub :create_cluster, nil do
             dep.stub :wait_for_pods, mock do
+              dep.send :deploy_gke_image, "test"
+              mock.verify
+            end
+          end
+        end
+      end
+    end
+  end
+
+  describe ".update_gke_deploy" do
+    it "builds a docker image" do
+      # TODO
+    end
+
+    it "pushes a docker image to GCR" do
+      # TODO
+    end
+
+    it "calls update_gke_deploy_config" do
+      dep = GCG::Deployer.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil, [String]
+
+      dep.stub :update_gke_dockerfile, nil do
+        dep.stub :system, nil do
+          Open3.stub :capture3, nil do
+            dep.stub :update_gke_deploy_config, mock do
               dep.send :deploy_gke_image, "test"
               mock.verify
             end
@@ -198,7 +226,6 @@ describe Google::Cloud::Gemserver::Deployer do
 
       mock = Minitest::Mock.new
       mock.expect :call, nil, ["gcloud docker -- push test"]
-      mock.expect :call, nil, [String]
 
       dep.stub :system, mock do
         dep.send :push_docker_image, "test" do

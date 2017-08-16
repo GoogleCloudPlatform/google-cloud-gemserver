@@ -13,6 +13,7 @@
 # limitations under the License.
 
 require "helper"
+require "yaml"
 
 describe Google::Cloud::Gemserver::Deployer do
   let(:gae) { { platform: "gae" } }
@@ -71,19 +72,29 @@ describe Google::Cloud::Gemserver::Deployer do
     `kubectl delete service #{GCG::Deployer::IMAGE_NAME}`
   }
 
+  let(:timestamp) {
+    deploy_file = YAML.load_file("#{GCG::Configuration::SERVER_PATH}/deployment.yaml")
+    deploy_file["spec"]["template"]["metadata"]["labels"]["timestamp"]
+  }
+
   describe "a GAE deployment" do
     it "deploys a new version to GAE" do
-      s = Google::Cloud::Gemserver::CLI::Server.new
+      s = GCG::CLI::Server.new
+      s.send :cleanup
+      cmd = "gcloud app deploy #{GCG::Configuration::SERVER_PATH} -q --no-promote --project #{s.config[:proj_id]}"
+
       s.config.stub :metadata, gae do
         s.config.stub :save_to_cloud, nil do
           s.stub :setup_default_keys, nil do
-            ENV["APP_ENV"] = "production"
-            initial_v  = GCG::Deployer.new.latest_gae_deploy_version
-            s.deploy # calls Deployer.new.deploy
-            final_v = GCG::Deployer.new.latest_gae_deploy_version
-            refute_equal initial_v, final_v
-            `gcloud beta app versions delete #{final_v}}`
-            ENV["APP_ENV"] = "dev"
+            GCG::Deployer.stub :system, cmd do
+              ENV["APP_ENV"] = "production"
+              initial_v  = GCG::Deployer.new.latest_gae_deploy_version
+              s.deploy # calls Deployer.new.deploy
+              final_v = GCG::Deployer.new.latest_gae_deploy_version
+              refute_equal initial_v, final_v
+              `gcloud beta app versions delete #{final_v}}` unless initial_v == final_v
+              ENV["APP_ENV"] = "dev"
+            end
           end
         end
       end
@@ -93,12 +104,12 @@ describe Google::Cloud::Gemserver::Deployer do
   describe "a GKE deployment" do
     it "creates a cluster, deployment, and service" do
       s = Google::Cloud::Gemserver::CLI::Server.new
+      s.send :cleanup
       set_secret
 
       dep = GCG::Deployer.new
       dep.stub :create_cluster, nil do
         dep.config.stub :metadata, gke do
-          # TODO config file missing? fix
           s.send :prepare_dir
           dep.deploy
           assert deployment_created?
@@ -111,5 +122,32 @@ describe Google::Cloud::Gemserver::Deployer do
   end
 
   describe "a GKE update" do
+    it "updates the image in a cluster" do
+      s = Google::Cloud::Gemserver::CLI::Server.new
+      s.send :cleanup
+      set_secret
+
+      dep = GCG::Deployer.new
+      dep.stub :create_cluster, nil do
+        dep.config.stub :metadata, gke do
+          s.send :prepare_dir
+          dep.deploy
+
+          assert deployment_created?
+          assert service_exposed?
+
+          out = capture_io { dep.update_gke_deploy }[0]
+
+          assert out.include? "Waiting for rollout to finish"
+          assert deployment_created?
+          assert service_exposed?
+          # TODO compare timestamps in deployment.yaml
+          #assert timestamp1 != timestamp2
+
+          delete_deployment
+          delete_service
+        end
+      end
+    end
   end
 end

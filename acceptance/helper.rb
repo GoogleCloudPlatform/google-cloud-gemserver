@@ -16,6 +16,7 @@ gem "minitest"
 
 require "minitest/autorun"
 require "minitest/rg"
+require "minitest/focus"
 require "google/cloud/gemserver"
 
 GCG = Google::Cloud::Gemserver

@@ -208,20 +208,16 @@ module Google
           # metadata requires values to start/end with a letter
           time = "time_#{Time.now.to_i}_end"
 
-          if File.file? deploy_file
-            puts "#{deploy_file} already exists. Skipping pod configuration."
-          else
-            File.open base_file do |source_file|
-              File.open deploy_file, "w" do |dest_file|
-                file_content = source_file.read % {
-                  image_name: IMAGE_NAME,
-                  image_location: image_location,
-                  container_name: IMAGE_NAME,
-                  sql_proxy_command: command,
-                  timestamp: time
-                }
-                dest_file.write file_content
-              end
+          File.open base_file do |source_file|
+            File.open deploy_file, "w" do |dest_file|
+              file_content = source_file.read % {
+                image_name: IMAGE_NAME,
+                image_location: image_location,
+                container_name: IMAGE_NAME,
+                sql_proxy_command: command,
+                timestamp: time
+              }
+              dest_file.write file_content
             end
           end
         end

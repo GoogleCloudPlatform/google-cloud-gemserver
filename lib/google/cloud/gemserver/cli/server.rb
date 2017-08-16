@@ -127,6 +127,8 @@ module Google
               system "kubectl delete service #{Deployer::IMAGE_NAME}"
               system "kubectl delete deployment #{Deployer::IMAGE_NAME}"
               system "gcloud container clusters delete #{name} -z #{zone}"
+              @config.delete_from_cloud
+              del_gcs_files
             end
 
             inst = @config.app["beta_settings"]["cloud_sql_instances"]
@@ -154,7 +156,6 @@ module Google
           ##
           # @private Deletes all gem data files on Google Cloud Storage.
           def del_gcs_files
-            # TODO: differentiate between GAE/GKE gem files, use gemstash's base_path option
             puts "Deleting all gem data on Google Cloud Storage..."
             gem_files = GCS.files Configuration::GEMSTASH_DIR
             gem_files.each { |f| f.delete }
