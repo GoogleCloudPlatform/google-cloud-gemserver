@@ -171,11 +171,15 @@ describe Google::Cloud::Gemserver::Deployer do
       mock.expect :call, nil, [String]
 
       dep.stub :update_gke_dockerfile, nil do
-        dep.stub :system, nil do
+        dep.stub :system, true do
           Open3.stub :capture3, nil do
             dep.stub :update_gke_deploy_config, mock do
-              dep.send :deploy_gke_image, "test"
-              mock.verify
+              dep.stub :create_cluster, nil do
+                dep.stub :wait_for_pods, nil do
+                  dep.send :deploy_gke_image, "test"
+                  mock.verify
+                end
+              end
             end
           end
         end
@@ -238,7 +242,6 @@ describe Google::Cloud::Gemserver::Deployer do
       dep = GCG::Deployer.new
 
       mock = Minitest::Mock.new
-      mock.expect :call, nil, [String]
       mock.expect :call, nil, [String]
 
       dep.stub :system, mock do
