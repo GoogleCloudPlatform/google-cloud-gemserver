@@ -257,13 +257,15 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock.expect :call, true, ["gcloud beta sql instances #{params}"]
 
       server.config.stub :deployed?, true do
-        server.config.stub :app, app do
-          server.config.stub :delete_from_cloud, nil do
-            server.stub :user_input, "n" do
-              server.stub :del_gcs_files, nil do
-                server.stub :system, mock do
-                  server.delete "bob"
-                  mock.verify
+        server.config.stub :metadata, gae do
+          server.config.stub :app, app do
+            server.config.stub :delete_from_cloud, nil do
+              server.stub :user_input, "n" do
+                server.stub :del_gcs_files, nil do
+                  server.stub :system, mock do
+                    server.delete "bob"
+                    mock.verify
+                  end
                 end
               end
             end
