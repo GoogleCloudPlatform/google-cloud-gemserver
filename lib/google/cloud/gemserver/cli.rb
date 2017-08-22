@@ -63,6 +63,9 @@ module Google
           "Existing project to deploy gemserver to"
         method_option :use_inst, type: :string, aliases: "-i", desc:
           "Existing project to deploy gemserver to"
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to deploy the gemserver to (gae or gke)", enum:
+          ["gae, gke"]
         def create
           prepare
           Server.new.deploy
@@ -78,8 +81,11 @@ module Google
           "Existing project to deploy gemserver to"
         method_option :use_inst, type: :string, aliases: "-i", desc:
           "Existing Cloud SQL instance to us"
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to deploy the gemserver to (gae or gke)", enum:
+          ["gae, gke"]
         def prepare
-          Project.new(options[:use_proj]).create
+          Project.new(options[:use_proj]).create options[:platform]
           CloudSQL.new(options[:use_inst]).run
         end
 
@@ -89,20 +95,25 @@ module Google
         desc "update", "Redeploys the gemserver with the current config file" \
           " and google-cloud-gemserver gem version (a deploy must have " \
           "succeeded for 'update' to work."
+        method_option :use_proj, type: :string, aliases: "-g", desc:
+          "The project / service to update."
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to deploy the gemserver to (gae or gke)", enum:
+          ["gae, gke"]
         def update
+          Project.new.send :update_metadata, options[:platform]
           Server.new.update
         end
 
         ##
-        # Deletes a given gemserver provided by the --use-proj option.
-        # This deletes the Google Cloud Platform project, all associated
-        # Cloud SQL instances, and all Cloud Storage buckets.
-        desc "delete", "Delete a given gemserver"
-        method_option :use_proj, type: :string, aliases: "-g", desc:
-        "Project id of GCP project the gemserver was deployed to. Warning:"\
-         " parent project and CloudSQL instance will also be deleted"
+        # Deletes a gemserver. This deletes the Google Cloud Platform project,
+        # all associated Cloud SQL instances, and all Cloud Storage buckets.
+        desc "delete", "Deletes a gemserver and its resources"
+        method_option :platform, type: :string, aliases: "-p", default: "gae",
+          desc: "The platform to delete the gemserver on (gae or gke)"
         def delete
-          Server.new.delete options[:use_proj]
+          Project.new.send :update_metadata, options[:platform]
+          Server.new.delete
         end
 
         ##
@@ -146,7 +157,7 @@ module Google
         desc "config", "Displays the config the current deployed gemserver is"\
           " using (if one is running)"
         def config
-          Configuration.display_config
+          Configuration.new.display_config
         end
 
         ##

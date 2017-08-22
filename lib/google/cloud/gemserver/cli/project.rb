@@ -39,7 +39,11 @@ module Google
           attr_accessor :config
 
           ##
-          # Initializes the project name and Configuration object.
+          # Initializes the project name, Configuration object and platform
+          # metadata.
+          #
+          # @param [String] name The name of the project on Google Cloud
+          # Platform.
           def initialize name = nil
             @proj_name = name
             @config = Configuration.new
@@ -48,9 +52,10 @@ module Google
           ##
           # Fetches a reference to the given project on Google Cloud Platform
           # and prompts the user to configure it correctly.
-          def create
+          def create platform = "gae"
             raise "Project name was not provided!" unless @proj_name
             begin
+              update_metadata platform
               @config.update_config @proj_name, :proj_id
               create_gae_project
               enable_api
@@ -70,10 +75,17 @@ module Google
           private
 
           ##
+          # @private Updates the platform field in the gemserver metadata file.
+          def update_metadata platform = "gae"
+            service = platform == "gke" ? "gke" : "gae"
+            @config.write_metadata platform: service
+          end
+
+          ##
           # @private Checks if the current Google Cloud Platform project
           # contains a Google App Engine project. If not, one is created.
           def create_gae_project
-            return if project_exists?
+            return if @config.metadata[:platform] == "gke" || project_exists?
             puts "Required Google App Engine project does not exist."
             system "gcloud app create --project #{@proj_name}"
           end
@@ -110,6 +122,13 @@ module Google
           #
           # @return [String]
           def enable_api
+            @config.metadata[:platform] == "gke" ? gke_apis : gae_apis
+          end
+
+          ##
+          # @private Outputs APIs that must be enabled for the project to
+          # deploy the gemserver to Google App Engine.
+          def gae_apis
             puts "\nEnable the Google Cloud SQL API if it is not already "\
               "enabled by visiting:\n https://console.developers.google.com"\
               "/apis/api/sqladmin.googleapis.com/overview?"\
@@ -122,6 +141,25 @@ module Google
               "already enabled by visiting:\nhttps://console.developers.google"\
               ".com/apis/api/appengine.googleapis.com/overview?"\
               "project=#{@proj_name} and clicking \"Enable\""
+            prompt_user
+          end
+
+          ##
+          # @private Outputs APIs that must be enabled for the project to
+          # deploy the gemserver to Google Container Engine.
+          def gke_apis
+            puts "\nEnable the Google Cloud SQL API if it is not already "\
+              "enabled by visiting: https://console.developers.google.com"\
+              "/apis/api/container.googleapis.com/overview?project=#{@proj_name}"\
+              " and clicking \"Enable\""
+            puts "\nEnable the Google Cloud Resource manager API if it is not already "\
+              "enabled by visiting: https://console.developers.google.com"\
+              "/apis/api/containerregistry.googleapis.com/overview?project=#{@proj_name}"\
+              " and clicking \"Enable\""
+            puts "\nEnable the Google App Engine Admin API if it is not already "\
+              "enabled by visiting: https://console.developers.google.com"\
+              "/apis/api/compute.googleapis.com/overview?project=#{@proj_name}"\
+              " and clicking \"Enable\""
             prompt_user
           end
 

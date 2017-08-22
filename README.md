@@ -29,9 +29,33 @@ Or install it yourself as:
 ### Basic Prerequisites
   1) Create a Google Cloud Platform (GCP) project.
   2) Install and setup the [gcloud SDK](https://cloud.google.com/sdk/downloads). Currently, versions 161+ are supported.
-  3) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
-  Using a service account is the recommended method for authentication; application default credentials should only be used for development purporses. Read this [authentication guide](docs/authentication.md) for more information.
-  4) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
+  3) Install the beta and kubectl component for gcloud by running `gcloud component install beta kubectl`
+  4) Authenticate gcloud by using a [service account](https://cloud.google.com/docs/authentication/getting-started) or [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials).
+  Using a service account is the recommended method for authentication; application default credentials should only be used for development purposes. Read this [authentication guide](docs/authentication.md) for more information.
+  5) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
+
+### Gemserver on Google Container Engine Workflow
+1) Set the GEMSERVER_CREDS environment variable to the path to your project
+service account. It must have project and Cloud SQL admin privileges.
+2) Create a service account with a role "Cloud SQL Client". Create and download
+a key for this service account.
+3) Run `kubectl create secret generic cloudsql-instance-credentials --from-file=credentials.json=[KEY_FILE_PATH]`
+where [KEY_FILE_PATH] is the path to the service account key you
+downloaded in the previous step.
+4) To deploy the gemserver, run `google-cloud-gemserver create --use-proj
+YOUR_PROJECT_ID --platform gke`. If you want to use an existing Cloud SQL
+instance, add `--use-inst YOUR_CLOUDSQL_INSTANCE_NAME` into the above command
+otherwise a new instance will be created.
+5) You will be prompted to enter the name of the
+Google Container Engine cluster to deploy to. If you do not have an existing
+one, a new one will be created.
+6) Once the command finishes running, run `kubectl get services` and look for
+the service called "gemserver-image". The external IP for that service is the
+endpoint you can use to push/yank/download gems.
+
+### Gemserver on Google App Engine Workflow
+  1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the CLoud SQL SLA coverage.
+  2) Running acceptance or performance tests requires you to have the Cloud SQL proxy running with your Cloud SQL instance. Visit this [link](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy) to learn how to install and run it (steps 3 and 5 can be skipped).
 
 ### Typical Workflow
   1) Deploy a gemserver by running: `google-cloud-gemserver create --use-proj YOUR_PROJECT_ID`. This deploys the gemserver in a Google App Engine project as the default service. It also creates a new Cloud SQL instance with machine type db-f1-micro. Note that this machine type is only recommended for development / testing and is not under the Cloud SQL SLA coverage.
@@ -41,6 +65,11 @@ Or install it yourself as:
   5) Push private gems to the gemserver as described [below](#pushing-gems).
   6) Download private gems by modifying your Gemfile as described
   [below](#fetching-gems).
+
+
+One way to check your gemserver deployment was successful is to hit the /health
+endpoint, e.g. gemserver.com/health. This displays the status of the database
+and the heartbeat of the gemserver.
 
 ### Pushing gems
   Note: ensure `my-key` has the read permission and is added in your gem
@@ -90,6 +119,9 @@ Or install it yourself as:
     Options:
     *  -g, [--use-proj=USE_PROJ]        # Existing project to deploy gemserver to
     *  -i, [--use-inst=USE_INST]        # Existing project to deploy gemserver to
+    *  -p, [--platform=PLATFORM]        # The platform to deploy the gemserver to (gae or gke)
+                                        # Default: gae
+                                        # Possible values: gae, gke
 
     Creates and deploys the gem server then starts it
 
@@ -127,6 +159,9 @@ Or install it yourself as:
 
     Options:
     *  -g, [--use-proj=USE_PROJ]        # Project id of GCP project the gemserver was deployed to. Warning: parent project and CloudSQL instance will also be deleted
+    *  -p, [--platform=PLATFORM]        # The platform to deploy the gemserver to (gae or gke)
+                                        # Default: gae
+                                        # Possible values: gae, gke
 
       Delete a given gemserver
 
@@ -154,6 +189,11 @@ Or install it yourself as:
 
     Usage:
       google-cloud-gemserver update
+
+    Options:
+    *  -p, [--platform=PLATFORM]        # The platform to deploy the gemserver to (gae or gke)
+                                        # Default: gae
+                                        # Possible values: gae, gke
 
     Redeploys the gemserver with the current config file and google-cloud-gemserver gem version (a deploy must have succeeded for 'update' to work)
 

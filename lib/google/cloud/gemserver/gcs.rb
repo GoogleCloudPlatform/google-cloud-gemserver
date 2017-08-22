@@ -52,8 +52,13 @@ module Google
         # @return [Google::Cloud::Storage::Bucket]
         def self.bucket
           return unless proj_id
-          bucket = cs.bucket proj_id
-          bucket ? bucket : cs.create_bucket(proj_id)
+          if Configuration.new.metadata[:platform] == "gke"
+            b_name = "gke_" + proj_id
+          else
+            b_name = "gae_" + proj_id
+          end
+          bucket = cs.bucket b_name
+          bucket ? bucket : cs.create_bucket(b_name)
         end
 
         ##

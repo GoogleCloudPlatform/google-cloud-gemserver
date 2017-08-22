@@ -61,8 +61,13 @@ module Google
           def log_app_description
             return "" if ENV["APP_ENV"] == "test"
             puts "Project Information:"
-            cmd = "gcloud app describe --project #{@proj}"
-            puts run_cmd(cmd).gsub("\n", "\n\t").prepend "\t"
+            
+            if @config.metadata[:platform] == "gke"
+              system "kubectl describe services"
+            else
+              cmd = "gcloud app describe --project #{@proj}"
+              puts run_cmd(cmd).gsub("\n", "\n\t").prepend "\t"
+            end
           end
 
           private

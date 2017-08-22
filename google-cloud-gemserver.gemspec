@@ -33,7 +33,6 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "mysql2", "~> 0.4"
   spec.add_development_dependency "filelock", "~> 1.1.1"
-  spec.add_development_dependency "rake", "~> 11.0"
   spec.add_development_dependency "minitest", "~> 5.10"
   spec.add_development_dependency "minitest-autotest", "~> 1.0"
   spec.add_development_dependency "minitest-focus", "~> 1.1"

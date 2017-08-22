@@ -15,6 +15,7 @@
 require "google/cloud/gemserver"
 require "fileutils"
 require "yaml"
+require "open3"
 
 module Google
   module Cloud
@@ -38,6 +39,7 @@ module Google
           # Creates a Server instance by initializing a Configuration object
           # that will be used to access paths to necessary configuration files.
           def initialize
+            ensure_gcloud_beta!
             @config = Configuration.new
           end
 
@@ -64,9 +66,10 @@ module Google
           # environment variable is set to "production." Otherwise, the
           # gemserver is started locally.
           def deploy
+            return start if ["test", "dev"].include? ENV["APP_ENV"]
             begin
-              return start if ["test", "dev"].include? ENV["APP_ENV"]
-              deploy_to_gae
+              puts "Beginning gemserver deployment..."
+              base_deploy
               setup_default_keys
             ensure
               cleanup
@@ -75,56 +78,77 @@ module Google
 
           ##
           # Updates the gemserver on a Google Cloud Platform project by
-          # redeploying it.
+          # redeploying it if Google App Engine is the target platform or by
+          # updating the container image if Google Container image is the target
+          # platform.
           def update
-            return unless Configuration.deployed?
+            return unless @config.deployed?
+
             puts "Updating gemserver..."
-            deploy_to_gae
+
+            if @config.metadata[:platform] == "gke"
+              begin
+                prepare_dir
+                Google::Cloud::Gemserver::Deployer.new.update_gke_deploy
+              ensure
+                cleanup
+              end
+            else
+              base_deploy
+            end
           end
 
           ##
-          # Deletes a given gemserver by its parent project's ID.
+          # Deletes a given gemserver and its Cloud SQL instance
           #
           # @param [String] proj_id The project ID of the project the gemserver
           # was deployed to.
           def delete proj_id
-            return unless Configuration.deployed?
-            full_delete = user_input("This will delete the entire Google Cloud"\
-               " Platform project #{proj_id}. Continue"\
-               " deletion? (Y|n, default n) If no, all relevant resources will"\
-               " be deleted besides the parent GCP project.").downcase
-            if full_delete == "y"
-              puts "Deleting gemserver with parent project"
-              system "gcloud projects delete #{proj_id}"
+            return unless @config.deployed?
+            if @config.metadata[:platform] == "gae"
+              full_delete = user_input("This will delete the entire Google Cloud"\
+                " Platform project #{proj_id}. Continue"\
+                " deletion? (Y|n, default n) If no, all relevant resources will"\
+                " be deleted besides the parent GCP project.").downcase
+              if full_delete == "y"
+                puts "Deleting gemserver with parent project"
+                system "gcloud projects delete #{proj_id}"
+              else
+                @config.delete_from_cloud
+                del_gcs_files
+                puts "Visit:\n https://console.cloud.google.com/appengine/"\
+                  "settings?project=#{proj_id} and click \"Disable "\
+                  " Application\" to delete the Google App Engine application"\
+                  " the gemserver was deployed to."
+              end
             else
+              name = user_input "Enter the name of the container cluster"
+              zone = user_input "Enter the zone of the cluster"
+              system "kubectl delete service #{Deployer::IMAGE_NAME}"
+              system "kubectl delete deployment #{Deployer::IMAGE_NAME}"
+              system "gcloud container clusters delete #{name} -z #{zone}"
               @config.delete_from_cloud
               del_gcs_files
-              inst = @config.app["beta_settings"]["cloud_sql_instances"]
-                .split(":").pop
-              puts "Deleting child Cloud SQL instance #{inst}..."
-              params = "delete #{inst} --project #{proj_id}"
-              status = system "gcloud beta sql instances #{params}"
-              fail "Unable to delete instance" unless status
-              puts "The Cloud SQL instance has been deleted. Visit:\n "\
-                "https://console.cloud.google.com/appengine/settings?project="\
-                "#{proj_id} and click \"Disable Application\" to delete the "\
-                "Google App Engine application the gemserver was deployed to."
             end
+
+            return unless @config.config[:db_adapter] == "cloud_sql"
+            inst = @config.config[:db_connection_options][:socket].split(":")
+              .pop
+            puts "Deleting child Cloud SQL instance #{inst}..."
+            params = "delete #{inst} --project #{proj_id}"
+            status = system "gcloud beta sql instances #{params}"
+            fail "Unable to delete instance" unless status
           end
 
           private
 
           ##
-          # Deploys the gemserver to Google App Engine and uploads the
-          # configuration file used by the gemserver to Google Cloud Storage
-          # for later convenience.
-          def deploy_to_gae
-            puts "Beginning gemserver deployment..."
+          # @private Deploys the gemserver to Google Cloud Platform, waits for
+          # it to be accessible, then saves its configuration and displays
+          # next steps.
+          def base_deploy
             prepare_dir
-            path = "#{Configuration::SERVER_PATH}/app.yaml"
-            flags = "-q --project #{@config[:proj_id]}"
-            status = system "gcloud app deploy #{path} #{flags}"
-            fail "Gemserver deployment failed. " unless status
+            Google::Cloud::Gemserver::Deployer.new.deploy
             wait_until_server_accessible
             @config.save_to_cloud
             display_next_steps
@@ -234,17 +258,22 @@ module Google
           #
           # @param [Integer] timeout The length of time the gemserver is
           # pinged. Optional.
-          def wait_until_server_accessible timeout = 60
+          def wait_until_server_accessible timeout = 90
             puts "Waiting for the gemserver to be accessible..."
             start_time = Time.now
+            url = remote
             loop do
               if Time.now - start_time > timeout
                 fail "Could not establish a connection to the gemserver"
               else
-                r = Request.new(nil, @config[:proj_id]).health
+                if url == "<pending>"
+                  url = remote
+                  next
+                end
+                r = Request.new(url).health
                 break if r.code.to_i == 200
               end
-              sleep 5
+              sleep 2
             end
           end
 
@@ -253,9 +282,14 @@ module Google
           #
           # @return [String]
           def remote
-            flag = "--project #{@config[:proj_id]}"
-            descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
-            descrip["defaultHostname"]
+            if @config.metadata[:platform] == "gke"
+              info = run_cmd("kubectl get service #{Deployer::IMAGE_NAME}")
+              info.split("\n").drop(1)[0].split[2]
+            else
+              flag = "--project #{@config[:proj_id]}"
+              descrip = YAML.load(run_cmd "gcloud app describe #{flag}")
+              descrip["defaultHostname"]
+            end
           end
 
           ##
@@ -268,7 +302,7 @@ module Google
 
               gem "google-cloud-gemserver", "#{Google::Cloud::Gemserver::VERSION}", path: "."
               gem "concurrent-ruby", require: "concurrent"
-              gem "gemstash", git: "https://github.com/bundler/gemstash.git", ref: "a5a78e2"
+              gem "gemstash", "~> 1.1.0"
               gem "mysql2", "~> 0.4"
               gem "filelock", "~> 1.1.1"
               gem "google-cloud-storage", "~> 1.1.0"
@@ -301,8 +335,9 @@ module Google
             FileUtils.mkpath Configuration::SERVER_PATH
             FileUtils.cp_r "#{dir}/.", Configuration::SERVER_PATH
             FileUtils.cp @config.config_path, Configuration::SERVER_PATH
-            FileUtils.cp @config.app_path, Configuration::SERVER_PATH
             gemfile
+            return unless @config.metadata[:platform] == "gae"
+            FileUtils.cp @config.app_path, Configuration::SERVER_PATH
           end
 
           ##
@@ -328,6 +363,24 @@ module Google
           # @return [String]
           def user_input msg
             puts msg
+            STDIN.gets.chomp
+          end
+
+          ##
+          # @private Ensure the gcloud SDK beta component is installed.
+          def ensure_gcloud_beta!
+            Open3.capture3 "yes | gcloud beta --help"
+            nil
+          end
+
+          ##
+          # @private Display a prompt and get user input.
+          #
+          # @param [String] prompt The prompt displayed to the user.
+          #
+          # @return [String]
+          def user_input prompt
+            puts prompt
             STDIN.gets.chomp
           end
         end

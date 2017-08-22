@@ -16,6 +16,10 @@ require "helper"
 require "gemstash"
 
 describe Google::Cloud::Gemserver::CLI::Server do
+
+  let(:gae) { { platform: "gae" } }
+  let(:gke) { { platform: "gke" } }
+
   describe "Server.new" do
     it "must set the properties" do
       server = GCG::CLI::Server.new
@@ -40,18 +44,24 @@ describe Google::Cloud::Gemserver::CLI::Server do
   end
 
   describe ".deploy" do
-    it "calls deploy_to_gae" do
+    it "calls the Deployer" do
       server = GCG::CLI::Server.new
-
       mock = Minitest::Mock.new
-      mock.expect :call, nil
-
+      mock.expect :deploy, nil
       ENV["APP_ENV"] = "production"
-      server.stub :deploy_to_gae, mock do
-        server.stub :setup_default_keys, nil do
-          server.stub :display_next_steps, nil do
-            server.deploy
-            mock.verify
+      server.stub :setup_default_keys, nil do
+        server.stub :prepare_dir, nil do
+          server.stub :wait_until_server_accessible, nil do
+            server.config.stub :save_to_cloud, nil do
+              server.stub :display_next_steps, nil do
+                server.stub :cleanup, nil do
+                  GCG::Deployer.stub :new, mock do
+                    server.deploy
+                    mock.verify
+                  end
+                end
+              end
+            end
           end
         end
       end
@@ -60,14 +70,12 @@ describe Google::Cloud::Gemserver::CLI::Server do
 
     it "sets up default keys" do
       server = GCG::CLI::Server.new
-
       mock = Minitest::Mock.new
       mock.expect :call, nil
-
       ENV["APP_ENV"] = "production"
-      server.stub :deploy_to_gae, nil do
-        server.stub :setup_default_keys, mock do
-          server.stub :display_next_steps, nil do
+      server.stub :setup_default_keys, mock do
+        server.stub :base_deploy, nil do
+          server.stub :cleanup, nil do
             server.deploy
             mock.verify
           end
@@ -77,207 +85,190 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
   end
 
-  describe ".deploy_to_gae" do
+  describe ".base_deploy" do
     it "calls prepare_dir" do
-      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
+
       mock = Minitest::Mock.new
       mock.expect :call, nil
+      deployer_mock = Minitest::Mock.new
+      deployer_mock.expect :deploy, nil
 
-      server.stub :system, true do
+      GCG::Deployer.stub :new, deployer_mock do
         server.config.stub :save_to_cloud, nil do
-          server.stub :setup_default_keys, nil do
-            server.stub :display_next_steps, nil do
-              server.stub :prepare_dir, mock do
-                server.stub :wait_until_server_accessible, nil do
-                  server.stub :remote, nil do
-                    server.send :deploy_to_gae
-                    mock.verify
-                  end
-                end
+          server.stub :display_next_steps, nil do
+            server.stub :prepare_dir, mock do
+              server.stub :wait_until_server_accessible, nil do
+                server.send :base_deploy
+                mock.verify
               end
             end
           end
         end
       end
-
-      ENV["APP_ENV"] = "test"
     end
 
-    it "calls gcloud app deploy" do
+    it "calls Deployer.new.deploy" do
       server = GCG::CLI::Server.new
-      app_path = "#{GCG::Configuration::SERVER_PATH}/app.yaml"
-      ENV["APP_ENV"] = "production"
-      mock_server = Minitest::Mock.new
-      mock_server.expect :call, true, ["gcloud app deploy #{app_path} -q --project #{server.config[:proj_id]}"]
 
-      server.stub :system, mock_server do
-        server.stub :prepare_dir, nil do
+      mock = Minitest::Mock.new
+      mock.expect :deploy, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :wait_until_server_accessible, nil do
           server.config.stub :save_to_cloud, nil do
-            server.stub :setup_default_keys, nil do
-              server.stub :display_next_steps, nil do
-                server.stub :wait_until_server_accessible, nil do
-                  server.stub :remote, nil do
-                    server.send :deploy_to_gae
-                    mock_server.verify
-                  end
-                end
+            server.stub :display_next_steps, nil do
+              GCG::Deployer.stub :new, mock do
+                server.send :base_deploy
+                mock.verify
               end
             end
           end
         end
       end
-      ENV["APP_ENV"] = "test"
     end
 
     it "waits for the gemserver to be accessible" do
-      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
+
       mock = Minitest::Mock.new
       mock.expect :call, nil
+      deployer_mock = Minitest::Mock.new
+      deployer_mock.expect :deploy, nil
 
-      server.stub :prepare_dir, nil do
+      GCG::Deployer.stub :new, deployer_mock do
         server.config.stub :save_to_cloud, nil do
-          server.stub :system, true do
-            server.stub :setup_default_keys, nil do
-              server.stub :display_next_steps, nil do
-                server.stub :wait_until_server_accessible, mock do
-                  server.stub :remote, nil do
-                    server.send :deploy_to_gae
-                    mock.verify
-                  end
-                end
+          server.stub :display_next_steps, nil do
+            server.stub :prepare_dir, nil do
+              server.stub :wait_until_server_accessible, mock do
+                server.send :base_deploy
+                mock.verify
               end
             end
           end
         end
       end
-
-      ENV["APP_ENV"] = "test"
     end
 
     it "saves the deploy config file to GCS" do
-      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
+
       mock = Minitest::Mock.new
       mock.expect :call, nil
+      deployer_mock = Minitest::Mock.new
+      deployer_mock.expect :deploy, nil
 
-      server.stub :prepare_dir, nil do
-        server.stub :system, true do
-          server.stub :setup_default_keys, nil do
-            server.stub :display_next_steps, nil do
+      GCG::Deployer.stub :new, deployer_mock do
+        server.config.stub :save_to_cloud, mock do
+          server.stub :display_next_steps, nil do
+            server.stub :prepare_dir, nil do
               server.stub :wait_until_server_accessible, nil do
-                server.config.stub :save_to_cloud, mock do
-                  server.stub :remote, nil do
-                    server.send :deploy_to_gae
-                    mock.verify
-                  end
-                end
+                server.send :base_deploy
+                mock.verify
               end
             end
           end
         end
       end
-
-      ENV["APP_ENV"] = "test"
     end
 
     it "displays helpful tips after deploying" do
-      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
+
       mock = Minitest::Mock.new
       mock.expect :call, nil
+      deployer_mock = Minitest::Mock.new
+      deployer_mock.expect :deploy, nil
 
-      server.stub :prepare_dir, nil do
-        server.stub :system, true do
-          server.stub :setup_default_keys, nil do
-            server.stub :display_next_steps, mock do
+      GCG::Deployer.stub :new, deployer_mock do
+        server.config.stub :save_to_cloud, nil do
+          server.stub :display_next_steps, mock do
+            server.stub :prepare_dir, nil do
               server.stub :wait_until_server_accessible, nil do
-                server.config.stub :save_to_cloud, nil do
-                  server.send :deploy_to_gae
-                  mock.verify
-                end
+                server.send :base_deploy
+                mock.verify
               end
             end
           end
         end
       end
-
-      ENV["APP_ENV"] = "test"
     end
   end
 
   describe ".update" do
-    it "calls deploy" do
+    it "checks if the gemserver was deployed" do
       server = GCG::CLI::Server.new
-      mock_server = Minitest::Mock.new
-      mock_server.expect :call, nil
+      mock = Minitest::Mock.new
+      mock.expect :call, false
 
-      GCG::Configuration.stub :deployed?, true do
-        server.stub :deploy_to_gae, mock_server do
-          server.update
-          mock_server.verify
+      server.config.stub :deployed?, mock do
+        server.update
+        mock.verify
+      end
+    end
+
+    it "calls Deployer.new.update_gke_deploy if target platform is gke" do
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :update_gke_deploy, nil
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          server.stub :prepare_dir, nil do
+            server.stub :cleanup, nil do
+              GCG::Deployer.stub :new, mock do
+                server.update
+                mock.verify
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "calls base_deploy if target platform is gae" do
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gae do
+          server.stub :base_deploy, mock do
+            server.update
+            mock.verify
+          end
         end
       end
     end
   end
 
   describe ".delete" do
-    it "calls gcloud projects delete on a full delete" do
+    it "checks if the gemserver was deployed" do
       server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, false
 
-      mock_server = Minitest::Mock.new
-      mock_server.expect :call, nil, ["gcloud projects delete bob"]
-
-      GCG::Configuration.stub :deployed?, true do
-        server.stub :user_input, "y" do
-          server.stub :system, mock_server do
-            server.delete "bob"
-            mock_server.verify
-          end
-        end
+      server.config.stub :deployed?, mock do
+        server.delete "test"
+        mock.verify
       end
     end
 
-    it "prompts the user to manually delete if not a full project deletion" do
+    it "calls gcloud projects delete if full gae delete" do
+      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
-      link = "https://console.cloud.google.com/appengine/settings?project=bob"
-
-      GCG::Configuration.stub :deployed?, true do
-        server.stub :user_input, "n" do
-          server.config.stub :delete_from_cloud, nil do
-            server.stub :del_gcs_files, nil do
-              server.stub :system, true do
-                out = capture_io { server.delete "bob" }[0]
-                assert out.include? link
-              end
-            end
-          end
-        end
-      end
-    end
-
-    it "deletes the Cloud SQL instance if not a full project deletion" do
-      server = GCG::CLI::Server.new
-      inst_name = "test"
-      inst_connection = "/cloudsql/a:b:#{inst_name}"
-      app = {
-        "beta_settings" => {
-          "cloud_sql_instances" => inst_connection
-        }
-      }
-      params = "delete #{inst_name} --project bob"
 
       mock = Minitest::Mock.new
-      mock.expect :call, true, ["gcloud beta sql instances #{params}"]
+      mock.expect :call, true, ["gcloud projects delete test"]
+      mock.expect :call, true, [String]
 
-      GCG::Configuration.stub :deployed?, true do
-        server.config.stub :app, app do
-          server.config.stub :delete_from_cloud, nil do
-            server.stub :user_input, "n" do
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gae do
+          server.stub :user_input, "y" do
+            server.stub :system, mock do
               server.stub :del_gcs_files, nil do
-                server.stub :system, mock do
-                  server.delete "bob"
+                server.config.stub :delete_from_cloud, nil do
+                  server.delete "test"
                   mock.verify
                 end
               end
@@ -285,15 +276,36 @@ describe Google::Cloud::Gemserver::CLI::Server do
           end
         end
       end
+      ENV["APP_ENV"] = "test"
     end
 
-    it "deletes the config file from GCS if not full project deletion" do
+    it "deletes gcs files on a partial gae delete" do
       server = GCG::CLI::Server.new
 
       mock = Minitest::Mock.new
       mock.expect :call, nil
 
-      GCG::Configuration.stub :deployed?, true do
+      server.config.stub :deployed?, true do
+        server.stub :user_input, "n" do
+          server.stub :system, true do
+            server.stub :del_gcs_files, mock do
+              server.config.stub :delete_from_cloud, nil do
+                server.delete "bob"
+                mock.verify
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "deletes the deployment config file on gcs if partial gae delete" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.config.stub :deployed?, true do
         server.stub :user_input, "n" do
           server.stub :system, true do
             server.stub :del_gcs_files, nil do
@@ -307,24 +319,110 @@ describe Google::Cloud::Gemserver::CLI::Server do
       end
     end
 
-    it "deletes gem data files on GCS if not full project deletion" do
+    it "prompts the user to manually disable the gae project if partial gae delete" do
       server = GCG::CLI::Server.new
+      link = "https://console.cloud.google.com/appengine/settings?project=bob"
 
-      mock = Minitest::Mock.new
-      mock.expect :call, nil
-
-      GCG::Configuration.stub :deployed?, true do
-        server.stub :user_input, "n" do
-          server.stub :system, true do
-            server.stub :del_gcs_files, mock do
-              server.config.stub :delete_from_cloud, nil do
-                server.delete "bob"
-                mock.verify
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gae do
+          server.stub :user_input, "n" do
+            server.config.stub :delete_from_cloud, nil do
+              server.stub :del_gcs_files, nil do
+                server.stub :system, true do
+                  out = capture_io { server.delete "bob" }[0]
+                  assert out.include? link
+                end
               end
             end
           end
         end
       end
+    end
+
+    it "deletes gcs files on a gke delete" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          server.stub :system, true do
+            server.stub :user_input, nil do
+              server.config.stub :delete_from_cloud, nil do
+                server.stub :del_gcs_files, mock do
+                  server.delete "bob"
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    it "deletes the gemserver service, deployment, and cluster for gke" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      img = GCG::Deployer::IMAGE_NAME
+      c_name_zone = "test"
+
+      mock = Minitest::Mock.new
+      mock.expect :call, true, ["kubectl delete service #{img}"]
+      mock.expect :call, true, ["kubectl delete deployment #{img}"]
+      mock.expect :call, true, ["gcloud container clusters delete #{c_name_zone} -z #{c_name_zone}"]
+      mock.expect :call, true, [String]
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          server.stub :system, mock do
+            server.stub :del_gcs_files, nil do
+              server.config.stub :delete_from_cloud, nil do
+                server.stub :user_input, c_name_zone do
+                  server.delete "bob"
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
+      ENV["APP_ENV"] = "test"
+    end
+
+    it "deletes the cloud sql instance" do
+      ENV["APP_ENV"] = "production"
+      server = GCG::CLI::Server.new
+      inst_name = "test"
+      inst_connection = "/cloudsql/a:b:#{inst_name}"
+      config = {
+        db_connection_options: {
+          socket: inst_connection
+        },
+        db_adapter: "cloud_sql"
+      }
+      params = "delete #{inst_name} --project bob"
+
+      mock = Minitest::Mock.new
+      mock.expect :call, true, ["gcloud beta sql instances #{params}"]
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gae do
+          server.config.stub :config, config do
+            server.config.stub :delete_from_cloud, nil do
+              server.stub :user_input, "n" do
+                server.stub :del_gcs_files, nil do
+                  server.stub :system, mock do
+                    server.delete "bob"
+                    mock.verify
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+      ENV["APP_ENV"] = "test"
     end
   end
 end

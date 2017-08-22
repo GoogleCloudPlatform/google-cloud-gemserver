@@ -221,13 +221,13 @@ module Google
         # Saves the configuration file used for a deployment.
         def save_to_cloud
           puts "Saving configuration"
-          GCS.upload config_path, GCS_PATH
+          GCS.upload config_path, server_config_path
         end
 
         ##
         # Deletes the configuration file used for a deployment
         def delete_from_cloud
-          GCS.delete_file GCS_PATH
+          GCS.delete_file server_config_path
         end
 
         ##
@@ -272,7 +272,7 @@ module Google
         # @private Generates a set of configuration files for the gemserver to
         # run and deploy to Google App Engine.
         def gen_config
-          return if on_appengine
+          return if on_gcp
           FileUtils.mkpath config_dir unless Dir.exist? config_dir
 
           write_file "#{config_dir}/app.yaml",        app_config, true
@@ -282,8 +282,8 @@ module Google
         end
 
         ##
-        # Fetches the path to the relevant configuration file based on the
-        # environment (production, test, development).
+        # @private Fetches the path to the relevant configuration file based on
+        # the environment (production, test, development).
         #
         # @return [String]
         def config_path
@@ -291,7 +291,20 @@ module Google
         end
 
         ##
-        # Fetches the path to the relevant app configuration file.
+        # @private Fetches the configuration file path on the gemserver.
+        #
+        # @retur [String]
+        def server_config_path
+          if metadata[:platform] == "gke"
+            "#{SERVER_PATH}/gke_#{suffix}"
+          else
+            "#{SERVER_PATH}/gae_#{suffix}"
+          end
+        end
+
+
+        ##
+        # @private Fetches the path to the relevant app configuration file.
         #
         # @return [String]
         def app_path
@@ -300,24 +313,42 @@ module Google
 
         ##
         # Displays the configuration used by the current gemserver
-        def self.display_config
+        def display_config
           unless deployed?
             puts "No configuration found. Was the gemserver deployed?"
             return
           end
-          prepare GCS.get_file(GCS_PATH)
+          prepare GCS.get_file(server_config_path)
           puts "Gemserver is running with this configuration:"
-          puts YAML.load_file(GCS_PATH).to_yaml
+          puts YAML.load_file(server_config_path).to_yaml
           cleanup
         end
 
         ##
+        # @private Writes metadata to metadata.yml in the gemserver's config
+        # directory.
+        def write_metadata options
+          path = "#{config_dir}/metadata.yml"
+          File.open(path, "w") { |f| YAML.dump options, f }
+        end
+
+        ##
+        # @private Fetches metadata from metadata.yml in the gemserver's config
+        # directory.
+        #
+        # @return [Hash]
+        def metadata
+          path = "#{config_dir}/metadata.yml"
+          return Hash.new unless File.file?(path)
+          YAML.load_file path
+        end
+
         # Checks if the gemserver was deployed by the existence of the config
         # file used to deploy it on a specific path on Google Cloud Storage.
         #
         # @return [Boolean]
-        def self.deployed?
-          !GCS.get_file(GCS_PATH).nil?
+        def deployed?
+          !GCS.get_file(server_config_path).nil?
         end
 
         private
@@ -470,35 +501,33 @@ module Google
         #
         # @return [String]
         def config_dir
-          return GAE_DIR if on_appengine
+          return GAE_DIR if on_gcp
           dir = ENV["GEMSERVER_CONFIG_DIR"]
           dir.nil? == true ? CONFIG_DIR : dir
         end
 
         ##
-        # @private Determines if the gemserver is running on Google App Engine.
+        # @private Determines if the gemserver is running on Google Cloud
+        # platform.
         #
         # @return [boolean]
-        def on_appengine
-          !ENV["GEMSERVER_ON_APPENGINE"].nil?
+        def on_gcp
+          !ENV["GEMSERVER_ON_APPENGINE"].nil? || !ENV["GEMSERVER_ON_GKE"].nil?
         end
 
         ##
         # @private Creates a temporary directory to download the configuration
         # file used to deploy the gemserver.
-        def self.prepare file
+        def prepare file
           FileUtils.mkpath SERVER_PATH
           file.download file.name
         end
 
         ##
         # @private Deletes a temporary directory.
-        def self.cleanup
+        def cleanup
           FileUtils.rm_rf SERVER_PATH
         end
-
-        private_class_method :prepare
-        private_class_method :cleanup
       end
     end
   end

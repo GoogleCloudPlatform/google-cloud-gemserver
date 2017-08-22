@@ -95,7 +95,7 @@ module Google
                 create_user
               end
             end
-            update_config
+            update_config if @config.metadata[:platform] == "gae"
           end
 
           private
