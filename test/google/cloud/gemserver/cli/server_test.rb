@@ -45,11 +45,43 @@ describe Google::Cloud::Gemserver::CLI::Server do
 
   describe ".deploy" do
     it "calls the Deployer" do
-      # TODO
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :deploy, nil
+      ENV["APP_ENV"] = "production"
+      server.stub :setup_default_keys, nil do
+        server.stub :prepare_dir, nil do
+          server.stub :wait_until_server_accessible, nil do
+            server.config.stub :save_to_cloud, nil do
+              server.stub :display_next_steps, nil do
+                server.stub :cleanup, nil do
+                  GCG::Deployer.stub :new, mock do
+                    server.deploy
+                    mock.verify
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+      ENV["APP_ENV"] = "test"
     end
 
     it "sets up default keys" do
-      # TODO
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+      ENV["APP_ENV"] = "production"
+      server.stub :setup_default_keys, mock do
+        server.stub :base_deploy, nil do
+          server.stub :cleanup, nil do
+            server.deploy
+            mock.verify
+          end
+        end
+      end
+      ENV["APP_ENV"] = "test"
     end
   end
 
@@ -77,7 +109,23 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
 
     it "calls Deployer.new.deploy" do
-      # TODO
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :deploy, nil
+
+      server.stub :prepare_dir, nil do
+        server.stub :wait_until_server_accessible, nil do
+          server.config.stub :save_to_cloud, nil do
+            server.stub :display_next_steps, nil do
+              GCG::Deployer.stub :new, mock do
+                server.send :base_deploy
+                mock.verify
+              end
+            end
+          end
+        end
+      end
     end
 
     it "waits for the gemserver to be accessible" do
@@ -149,23 +197,82 @@ describe Google::Cloud::Gemserver::CLI::Server do
 
   describe ".update" do
     it "checks if the gemserver was deployed" do
-      # TODO
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, false
+
+      server.config.stub :deployed?, mock do
+        server.update
+        mock.verify
+      end
     end
 
     it "calls Deployer.new.update_gke_deploy if target platform is gke" do
-      # TODO
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :update_gke_deploy, nil
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          server.stub :prepare_dir, nil do
+            server.stub :cleanup, nil do
+              GCG::Deployer.stub :new, mock do
+                server.update
+                mock.verify
+              end
+            end
+          end
+        end
+      end
     end
 
     it "calls base_deploy if target platform is gae" do
-      # TODO
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gae do
+          server.stub :base_deploy, mock do
+            server.update
+            mock.verify
+          end
+        end
+      end
     end
   end
 
   describe ".delete" do
     it "checks if the gemserver was deployed" do
+      server = GCG::CLI::Server.new
+      mock = Minitest::Mock.new
+      mock.expect :call, false
+
+      server.config.stub :deployed?, mock do
+        server.delete "test"
+        mock.verify
+      end
     end
 
     it "calls gcloud projects delete if full gae delete" do
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, true, ["gcloud projects delete test"]
+      mock.expect :call, true, [String]
+
+      server.config.stub :deployed?, true do
+        server.stub :user_input, "y" do
+          server.stub :system, mock do
+            server.stub :del_gcs_files, nil do
+              server.config.stub :delete_from_cloud, nil do
+                server.delete "test"
+                mock.verify
+              end
+            end
+          end
+        end
+      end
     end
 
     it "deletes gcs files on a partial gae delete" do
@@ -227,19 +334,52 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
 
     it "deletes gcs files on a gke delete" do
-      # TODO
+      server = GCG::CLI::Server.new
+
+      mock = Minitest::Mock.new
+      mock.expect :call, nil
+
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          server.stub :system, true do
+            server.stub :user_input, nil do
+              server.config.stub :delete_from_cloud, nil do
+                server.stub :del_gcs_files, mock do
+                  server.delete "bob"
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
     end
 
-    it "deletes the gemserver service for gke" do
-      # TODO
-    end
+    it "deletes the gemserver service, deployment, and cluster for gke" do
+      server = GCG::CLI::Server.new
+      img = GCG::Deployer::IMAGE_NAME
+      c_name_zone = "test"
 
-    it "deletes the gemserver deployment for gke" do
-      # TODO
-    end
+      mock = Minitest::Mock.new
+      mock.expect :call, true, ["kubectl delete service #{img}"]
+      mock.expect :call, true, ["kubectl delete deployment #{img}"]
+      mock.expect :call, true, ["gcloud container clusters delete #{c_name_zone} -z #{c_name_zone}"]
+      mock.expect :call, true, [String]
 
-    it "deletes the cluster for gke" do
-      # TODO
+      server.config.stub :deployed?, true do
+        server.config.stub :metadata, gke do
+          server.stub :system, mock do
+            server.stub :del_gcs_files, nil do
+              server.config.stub :delete_from_cloud, nil do
+                server.stub :user_input, c_name_zone do
+                  server.delete "bob"
+                  mock.verify
+                end
+              end
+            end
+          end
+        end
+      end
     end
 
     it "deletes the cloud sql instance" do
