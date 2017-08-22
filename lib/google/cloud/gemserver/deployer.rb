@@ -68,7 +68,7 @@ module Google
               update_gke_deploy_config location
               puts "Setting service to use new image..."
               system "kubectl apply -f #{Configuration::SERVER_PATH}/deployment.yaml"
-              puts `kubectl rollout status deployment #{IMAGE_NAME}`
+              puts run_cmd("kubectl rollout status deployment #{IMAGE_NAME}")
               wait_for_pods
             end
           end
@@ -320,6 +320,14 @@ module Google
         def user_input prompt
           puts prompt
           STDIN.gets.chomp
+        end
+
+        ##
+        # @private Runs a given command on the local machine.
+        #
+        # @param [String] args The command to be run.
+        def run_cmd args
+          `#{args}`
         end
       end
     end

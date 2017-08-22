@@ -73,11 +73,53 @@ describe Google::Cloud::Gemserver::Deployer do
 
   describe ".deploy_to_gke" do
     it "builds a docker image" do
-      # TODO
+      dep = GCG::Deployer.new
+      mock  = Minitest::Mock.new
+      mock.expect :call, nil, [String]
+
+      dep.stub :build_docker_image, mock do
+        dep.config.stub :metadata, gke do
+          dep.stub :update_gke_deploy_config, nil do
+            dep.stub :update_gke_dockerfile, nil do
+              Open3.stub :capture3, nil do
+                dep.stub :create_cluster, nil do
+                  dep.stub :wait_for_pods, nil do
+                    dep.stub :system, true do
+                      dep.deploy
+                      mock.verify
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
     end
 
     it "pushes a docker image to GCR" do
-      # TODO
+      dep = GCG::Deployer.new
+      mock  = Minitest::Mock.new
+      mock.expect :call, nil, [String]
+
+      dep.stub :push_docker_image, mock do
+        dep.config.stub :metadata, gke do
+          dep.stub :update_gke_deploy_config, nil do
+            dep.stub :update_gke_dockerfile, nil do
+              Open3.stub :capture3, nil do
+                dep.stub :create_cluster, nil do
+                  dep.stub :wait_for_pods, nil do
+                    dep.stub :system, true do
+                      dep.deploy
+                      mock.verify
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
     end
 
     it "calls deploy_gke_image" do
@@ -88,8 +130,10 @@ describe Google::Cloud::Gemserver::Deployer do
 
       dep.stub :update_gke_dockerfile, nil do
         dep.stub :system, nil do
-          dep.stub :deploy_gke_image, mock do
-            dep.send :deploy_to_gke
+          Open3.stub :capture3, nil do
+            dep.stub :deploy_gke_image, mock do
+              dep.send :deploy_to_gke
+            end
           end
         end
       end
@@ -156,12 +200,34 @@ describe Google::Cloud::Gemserver::Deployer do
   end
 
   describe ".update_gke_deploy" do
-    it "builds a docker image" do
-      # TODO
-    end
+    it "builds and pushes a docker image" do
+      dep = GCG::Deployer.new
+      loc = "us.gcr.io/test/#{GCG::Deployer::IMAGE_NAME}"
+      config_mock = Minitest::Mock.new
+      config_mock.expect :call, "test", [:proj_id]
+      mock  = Minitest::Mock.new
+      mock.expect :call, true, ["docker build -t #{loc} #{GCG::Configuration::SERVER_PATH}"]
+      mock.expect :call, true, ["gcloud docker -- push #{loc}"]
+      mock.expect :call, true, ["kubectl apply -f #{GCG::Configuration::SERVER_PATH}/deployment.yaml"]
 
-    it "pushes a docker image to GCR" do
-      # TODO
+      dep.config.stub :[], config_mock do
+        dep.config.stub :metadata, gke do
+          dep.stub :update_gke_deploy_config, nil do
+            dep.stub :update_gke_dockerfile, nil do
+              Open3.stub :capture3, nil do
+                dep.stub :wait_for_pods, nil do
+                  dep.stub :system, mock do
+                    dep.stub :run_cmd, nil do
+                      dep.send :update_gke_deploy
+                      mock.verify
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
     end
 
     it "calls update_gke_deploy_config" do
@@ -196,8 +262,10 @@ describe Google::Cloud::Gemserver::Deployer do
 
       dep.stub :system, nil do
         dep.stub :update_gke_dockerfile, mock do
-          dep.send :build_docker_image, "/tmp" do
-            mock.verify
+          Open3.stub :capture3, nil do
+            dep.send :build_docker_image, "/tmp" do
+              mock.verify
+            end
           end
         end
       end
@@ -211,8 +279,8 @@ describe Google::Cloud::Gemserver::Deployer do
       mock.expect :call, nil, ["docker build -t #{loc} test"]
 
       dep.stub :update_gke_dockerfile, nil do
-        dep.send :build_docker_image, "test" do
-          Open3.stub :capture3, nil do
+        Open3.stub :capture3, nil do
+          dep.send :build_docker_image, "test" do
             dep.stub :system, mock do
               dep.send :build_docker_image, "test" do
                 mock.verify
