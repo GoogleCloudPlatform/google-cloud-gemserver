@@ -181,8 +181,8 @@ module Google
             "found here: "\
             "https://cloud.google.com/compute/docs/regions-zones/regions-zones"
           unless cluster_exists? name, zone
-            system "gcloud container clusters create #{name} --zone #{zone}"
-            fail "Cluster creation error." unless $?.exitstatus == 0
+            s = system "gcloud container clusters create #{name} --zone #{zone}"
+            fail "Cluster creation error." unless s
           end
           system "gcloud container clusters get-credentials #{name} --zone #{zone}"
         end
@@ -213,7 +213,6 @@ module Google
               file_content = source_file.read % {
                 image_name: IMAGE_NAME,
                 image_location: image_location,
-                container_name: IMAGE_NAME,
                 sql_proxy_command: command,
                 timestamp: time
               }
@@ -235,18 +234,14 @@ module Google
           end
 
           FileUtils.cp ENV["GEMSERVER_CREDS"], app_dir
-          if File.file? "Dockerfile"
-            puts "The Dockerfile file already exists."
-          else
-            File.open "#{app_dir}/Dockerfile.base" do |source_file|
-              FileUtils.touch "#{app_dir}/Dockerfile"
-              File.open "#{app_dir}/Dockerfile", "w" do |dest_file|
-                service_account = ENV["GEMSERVER_CREDS"].split("/").pop
-                file_content = source_file.read % {
-                  service_account_name: "/app/#{service_account}"
-                }
-                dest_file.write file_content
-              end
+          File.open "#{app_dir}/Dockerfile.base" do |source_file|
+            FileUtils.touch "#{app_dir}/Dockerfile"
+            File.open "#{app_dir}/Dockerfile", "w" do |dest_file|
+              service_account = ENV["GEMSERVER_CREDS"].split("/").pop
+              file_content = source_file.read % {
+                service_account_name: "/app/#{service_account}"
+              }
+              dest_file.write file_content
             end
           end
         end

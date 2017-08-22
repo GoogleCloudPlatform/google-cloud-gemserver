@@ -255,6 +255,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
 
     it "calls gcloud projects delete if full gae delete" do
+      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
 
       mock = Minitest::Mock.new
@@ -275,6 +276,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
           end
         end
       end
+      ENV["APP_ENV"] = "test"
     end
 
     it "deletes gcs files on a partial gae delete" do
@@ -360,6 +362,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
     end
 
     it "deletes the gemserver service, deployment, and cluster for gke" do
+      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
       img = GCG::Deployer::IMAGE_NAME
       c_name_zone = "test"
@@ -384,16 +387,19 @@ describe Google::Cloud::Gemserver::CLI::Server do
           end
         end
       end
+      ENV["APP_ENV"] = "test"
     end
 
     it "deletes the cloud sql instance" do
+      ENV["APP_ENV"] = "production"
       server = GCG::CLI::Server.new
       inst_name = "test"
       inst_connection = "/cloudsql/a:b:#{inst_name}"
-      app = {
-        "beta_settings" => {
-          "cloud_sql_instances" => inst_connection
-        }
+      config = {
+        db_connection_options: {
+          socket: inst_connection
+        },
+        db_adapter: "cloud_sql"
       }
       params = "delete #{inst_name} --project bob"
 
@@ -402,7 +408,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
 
       server.config.stub :deployed?, true do
         server.config.stub :metadata, gae do
-          server.config.stub :app, app do
+          server.config.stub :config, config do
             server.config.stub :delete_from_cloud, nil do
               server.stub :user_input, "n" do
                 server.stub :del_gcs_files, nil do
@@ -416,6 +422,7 @@ describe Google::Cloud::Gemserver::CLI::Server do
           end
         end
       end
+      ENV["APP_ENV"] = "test"
     end
   end
 end

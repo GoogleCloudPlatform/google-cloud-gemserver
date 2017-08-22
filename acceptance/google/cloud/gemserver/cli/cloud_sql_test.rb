@@ -22,7 +22,6 @@ CFG = Google::Cloud::Gemserver::Configuration
 CSQL = Google::Apis::SqladminV1beta4
 SCOPES = ["https://www.googleapis.com/auth/sqlservice.admin"]
 
-'''
 describe Google::Cloud::Gemserver::CLI::CloudSQL do
 
   let(:auth) {
@@ -85,4 +84,3 @@ describe Google::Cloud::Gemserver::CLI::CloudSQL do
     end
   end
 end
-'''

@@ -56,7 +56,7 @@ module Google
             raise "Project name was not provided!" unless @proj_name
             begin
               update_metadata platform
-              @config.update_config @proj_name, :proj_id if platform == "gae"
+              @config.update_config @proj_name, :proj_id
               create_gae_project
               enable_api
               enable_billing

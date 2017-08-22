@@ -131,8 +131,9 @@ module Google
               del_gcs_files
             end
 
-            inst = @config.app["beta_settings"]["cloud_sql_instances"]
-              .split(":").pop
+            return unless @config.config[:db_adapter] == "cloud_sql"
+            inst = @config.config[:db_connection_options][:socket].split(":")
+              .pop
             puts "Deleting child Cloud SQL instance #{inst}..."
             params = "delete #{inst} --project #{proj_id}"
             status = system "gcloud beta sql instances #{params}"

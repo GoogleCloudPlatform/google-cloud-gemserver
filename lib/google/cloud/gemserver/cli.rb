@@ -64,7 +64,8 @@ module Google
         method_option :use_inst, type: :string, aliases: "-i", desc:
           "Existing project to deploy gemserver to"
         method_option :platform, type: :string, aliases: "-p", default: "gae",
-          desc: "The platform to deploy the gemserver to (gae or gke)"
+          desc: "The platform to deploy the gemserver to (gae or gke)", enum:
+          ["gae, gke"]
         def create
           prepare
           Server.new.deploy
@@ -81,7 +82,8 @@ module Google
         method_option :use_inst, type: :string, aliases: "-i", desc:
           "Existing Cloud SQL instance to us"
         method_option :platform, type: :string, aliases: "-p", default: "gae",
-          desc: "The platform to deploy the gemserver to (gae or gke)"
+          desc: "The platform to deploy the gemserver to (gae or gke)", enum:
+          ["gae, gke"]
         def prepare
           Project.new(options[:use_proj]).create options[:platform]
           CloudSQL.new(options[:use_inst]).run
@@ -96,7 +98,8 @@ module Google
         method_option :use_proj, type: :string, aliases: "-g", desc:
           "The project / service to update."
         method_option :platform, type: :string, aliases: "-p", default: "gae",
-          desc: "The platform to update the gemserver on (gae or gke)"
+          desc: "The platform to deploy the gemserver to (gae or gke)", enum:
+          ["gae, gke"]
         def update
           Project.new.send :update_metadata, options[:platform]
           Server.new.update
