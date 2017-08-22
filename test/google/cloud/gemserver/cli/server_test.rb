@@ -262,12 +262,14 @@ describe Google::Cloud::Gemserver::CLI::Server do
       mock.expect :call, true, [String]
 
       server.config.stub :deployed?, true do
-        server.stub :user_input, "y" do
-          server.stub :system, mock do
-            server.stub :del_gcs_files, nil do
-              server.config.stub :delete_from_cloud, nil do
-                server.delete "test"
-                mock.verify
+        server.config.stub :metadata, gae do
+          server.stub :user_input, "y" do
+            server.stub :system, mock do
+              server.stub :del_gcs_files, nil do
+                server.config.stub :delete_from_cloud, nil do
+                  server.delete "test"
+                  mock.verify
+                end
               end
             end
           end
@@ -320,12 +322,14 @@ describe Google::Cloud::Gemserver::CLI::Server do
       link = "https://console.cloud.google.com/appengine/settings?project=bob"
 
       server.config.stub :deployed?, true do
-        server.stub :user_input, "n" do
-          server.config.stub :delete_from_cloud, nil do
-            server.stub :del_gcs_files, nil do
-              server.stub :system, true do
-                out = capture_io { server.delete "bob" }[0]
-                assert out.include? link
+        server.config.stub :metadata, gae do
+          server.stub :user_input, "n" do
+            server.config.stub :delete_from_cloud, nil do
+              server.stub :del_gcs_files, nil do
+                server.stub :system, true do
+                  out = capture_io { server.delete "bob" }[0]
+                  assert out.include? link
+                end
               end
             end
           end
